@@ -1,3 +1,8 @@
+# backend/app/main.py
+
+from dotenv import load_dotenv
+load_dotenv()
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, declarations, missions, paie, user 
@@ -5,7 +10,7 @@ from app.routers import auth, declarations, missions, paie, user
 
 app = FastAPI(
     title="Avicenne Pay API",
-    # 🛡️ 2. LA NOUVELLE MÉTHODE PRO : On déclare le schéma de sécurité directement dans l'app
+    # 🛡️ 2. Déclaration du schéma de sécurité directement dans l'app
     swagger_ui_parameters={"persistAuthorization": True}, # Garde le token même si on actualise la page !
     openapi_components={
         "securitySchemes": {
@@ -20,12 +25,14 @@ app = FastAPI(
     security=[{"BearerAuth": []}] 
 )
 
-# Liste des adresses autorisées à parler à notre backend
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://10.10.12.75:5173",
-]
+# Récupération de la vériable d'env
+origins_env = os.getenv(
+    "CORS_ORIGINS", 
+    "http://localhost:5173,http://127.0.0.1:5173,http://10.10.12.75:5173"
+)
+
+# transformation de la chaîne en une vraie liste Python ['URL1', 'URL2']
+origins = [origin.strip() for origin in origins_env.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
