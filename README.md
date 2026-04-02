@@ -1,5 +1,3 @@
-# AVICENNE-PAY
-
 # AVICENNE-PAY 💰
 
 Application de gestion et de synthèse de paie pour les collaborateurs d'Avicenne.
