@@ -1,6 +1,6 @@
-# backend/schemas/ligne_declaration.py
+# backend/app/schemas/ligne_declaration.py
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, ConfigDict
 
 class LigneDeclarationOut(BaseModel):
     id: int
@@ -14,5 +14,4 @@ class LigneDeclarationOut(BaseModel):
     def sous_total(self) -> float:
         return round(self.quantite * self.tarif_applique, 2)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

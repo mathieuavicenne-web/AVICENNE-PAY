@@ -1,4 +1,4 @@
-# backend/models/user.py
+# backend/app/models/user.py
 
 import enum
 from datetime import datetime

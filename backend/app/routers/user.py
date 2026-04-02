@@ -26,9 +26,43 @@ router = APIRouter(prefix="/users", tags=["Gestion des Utilisateurs"])
 def get_my_profile(current_user: User = Depends(get_current_user)):
     """Récupère les infos de l'utilisateur connecté avec IBAN/NSS déchiffrés."""
     user_data = current_user
-    user_data.nss = decrypt_data(current_user.nss_encrypted)
-    user_data.iban = decrypt_data(current_user.iban_encrypted)
+    
+    # 🛡️ Sécurisation : on ne déchiffre que si la donnée existe !
+    user_data.nss = decrypt_data(current_user.nss_encrypted) if current_user.nss_encrypted else None
+    user_data.iban = decrypt_data(current_user.iban_encrypted) if current_user.iban_encrypted else None
+    
     return user_data
+
+@router.put("/me", response_model=UserOut)
+def update_my_profile(
+    profile_data: UserProfileUpdate,  # 👈 Utilisation de ton nouveau schéma validé !
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Permet à l'utilisateur de mettre à jour ses propres infos (NSS, IBAN, adresse...)"""
+    update_data = profile_data.model_dump(exclude_unset=True)
+    
+    # 🔒 Traitement spécifique pour les données sensibles à chiffrer
+    if "nss" in update_data:
+        nss_clair = update_data.pop("nss")
+        update_data["nss_encrypted"] = encrypt_data(nss_clair) if nss_clair else None
+        
+    if "iban" in update_data:
+        iban_clair = update_data.pop("iban")
+        update_data["iban_encrypted"] = encrypt_data(iban_clair) if iban_clair else None
+
+    # Sauvegarde du reste des infos
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+        
+    db.commit()
+    db.refresh(current_user)
+    
+    # On repasse les données en clair pour la réponse du frontend
+    current_user.nss = decrypt_data(current_user.nss_encrypted) if current_user.nss_encrypted else None
+    current_user.iban = decrypt_data(current_user.iban_encrypted) if current_user.iban_encrypted else None
+    
+    return current_user
 
 @router.put("/{user_id}", response_model=UserOut)
 def update_user(
@@ -91,6 +125,8 @@ def update_user(
     db.commit()
     db.refresh(user_to_edit)
     return user_to_edit
+
+# ── 👥 GESTION DES UTILISATEURS PAR LES MANAGERS ──
 
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
@@ -246,21 +282,15 @@ def update_user(
     user_id: int,
     user_in: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    # 🛡️ FastAPI bloque DIRECTEMENT l'accès si l'user n'est ni Admin ni Coordo
+    current_user: User = Depends(check_is_at_least_coordo)
 ):
-    # 🛑 1. Vérification globale des rôles autorisés à éditer
-    if current_user.role not in [Role.admin, Role.coordo]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les administrateurs et les coordinateurs peuvent éditer un utilisateur."
-        )
-
-    # 🔍 2. Recherche de l'utilisateur cible
+    # 🔍 1. Recherche de l'utilisateur cible
     user_to_edit = db.query(User).filter(User.id == user_id).first()
     if not user_to_edit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
 
-    # 🛡️ 3. Droits spécifiques pour le COORDO
+    # 🛡️ 2. Droits spécifiques pour le COORDO
     if current_user.role == Role.coordo:
         # Il ne peut éditer que les gens de son site
         if user_to_edit.site != current_user.site:
@@ -274,10 +304,8 @@ def update_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Un Coordinateur ne peut éditer que des Responsables ou des TCP."
             )
-        # ⚠️ AJOUTER ICI : Une condition si tu as un champ type_contrat pour vérifier "CCDA"
-        # if user_to_edit.type_contrat != "CCDA": raise ...
 
-    # 🧠 4. Extraction des données envoyées (sans toucher aux champs non renseignés)
+    # 🧠 3. Extraction des données envoyées (sans toucher aux champs non renseignés)
     update_data = user_in.model_dump(exclude_unset=True)
     
     # On simule les futures valeurs pour checker la cohérence
@@ -286,7 +314,7 @@ def update_user(
     futur_prog = update_data.get("programme", user_to_edit.programme)
     futur_mat = update_data.get("matiere", user_to_edit.matiere)
 
-    # 💥 5. LA RÈGLE STRICTE : Unicité du RESP par périmètre
+    # 💥 4. LA RÈGLE STRICTE : Unicité du RESP par périmètre
     if futur_role == Role.resp:
         # On cherche s'il existe DÉJÀ un autre RESP sur ce même triplet (en excluant le user lui-même)
         existing_resp = db.query(User).filter(
@@ -303,7 +331,7 @@ def update_user(
                 detail=f"Poste occupé : Le poste de Responsable pour {futur_site} / {futur_prog} / {futur_mat} est déjà attribué à {existing_resp.prenom} {existing_resp.nom}."
             )
 
-    # 💾 6. Sauvegarde si tout est validé !
+    # 💾 5. Sauvegarde si tout est validé !
     for key, value in update_data.items():
         setattr(user_to_edit, key, value)
 

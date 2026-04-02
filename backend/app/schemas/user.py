@@ -1,6 +1,6 @@
-# backend/schemas/user.py
+# backend/app/schemas/user.py
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Optional
 from app.core.referentiels import MATIERES, Role, Site, TypeContrat
 
@@ -28,7 +28,6 @@ class UserCreate(UserBase):
 class UserProfileUpdate(BaseModel):
     """
     Champs que l'utilisateur lambda peut modifier lui-même.
-    Le NSS et l'IBAN arrivent en CLAIR du front (on s'occupe de les chiffrer après).
     """
     nom: Optional[str] = None
     prenom: Optional[str] = None
@@ -36,9 +35,14 @@ class UserProfileUpdate(BaseModel):
     adresse: Optional[str] = None
     code_postal: Optional[str] = None
     ville: Optional[str] = None
-    nss: Optional[str] = None   
-    iban: Optional[str] = None  
+    
+    # 🇫🇷 Validation NSS : 15 chiffres (ex: 123456789012345)
+    nss: Optional[str] = Field(None, pattern=r"^[12]\d{14}$") 
+    
+    # 🏦 Validation IBAN FR : "FR" suivi de 25 caractères alphanumériques
+    iban: Optional[str] = Field(None, pattern=r"^FR\d{2}[A-Z0-9]{4}\d{7}[A-Z0-9]{10}\d{2}$")
 
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 # ── 4. MISE À JOUR PAR L'ADMIN (Anciennement ton UserUpdate) ────────────────
 class UserUpdate(UserProfileUpdate):
@@ -86,8 +90,7 @@ class UserOut(UserBase):
     # Propriété déduite du rôle (calculée automatiquement)
     type_contrat: Optional[TypeContrat] = None 
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ── 6. SÉCURITÉ MOTS DE PASSE ──────────────────────────────────────────────
 class PasswordChange(BaseModel):

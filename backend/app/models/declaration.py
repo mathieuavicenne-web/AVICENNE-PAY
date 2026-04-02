@@ -1,4 +1,4 @@
-# backend/models/declaration.py
+# backend/app/models/declaration.py
 
 import enum
 from datetime import datetime

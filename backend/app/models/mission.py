@@ -1,4 +1,4 @@
-# backend/models/mission.py
+# backend/app/models/mission.py
 
 import enum
 from datetime import datetime
