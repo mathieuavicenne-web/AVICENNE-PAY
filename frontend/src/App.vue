@@ -1,40 +1,47 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
+import { authService } from '@/services/api' 
 import './assets/main.css'
 
 const router = useRouter()
+const route = useRoute()
 
 // --- États de l'application ---
 const estConnecte = ref(false)
 const userRole = ref('')
+const prenomUtilisateur = ref('Utilisateur') // Par défaut
 const loading = ref(false)
 const errorMessage = ref('')
 const reponsePython = ref('')
 
-// --- Fonction pour lire le rôle dans le token ---
-const extraireRoleDuToken = () => {
+// --- Fonction pour récupérer le profil complet ---
+const chargerProfil = async () => {
   const token = localStorage.getItem('token')
   if (token) {
     try {
-      const base64Url = token.split('.')[1]
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      }).join(''))
-
-      const decoded = JSON.parse(jsonPayload)
-      userRole.value = decoded.role
+      const userData = await authService.getUserProfile()
+      prenomUtilisateur.value = userData.prenom
+      userRole.value = userData.role
       estConnecte.value = true
     } catch (error) {
-      console.error("Erreur de lecture du token", error)
+      console.error("Erreur de récupération du profil dans App.vue", error)
       seDeconnecter()
     }
+  } else {
+    estConnecte.value = false
+    userRole.value = ''
+    prenomUtilisateur.value = 'Utilisateur'
   }
 }
 
+// 🟢 LA CORRECTION : Si l'utilisateur change de page (ex: après s'être connecté), on recharge le profil !
+watch(() => route.path, () => {
+  chargerProfil()
+})
+
 onMounted(() => {
-  extraireRoleDuToken()
+  chargerProfil()
 })
 
 // --- Fonction de test Python d'origine ---
@@ -50,11 +57,10 @@ async function appelerLeBackend() {
 
 // --- Fonction de déconnexion ---
 const seDeconnecter = () => {
-  localStorage.removeItem('token')
+  authService.logout() 
   userRole.value = ''
+  prenomUtilisateur.value = 'Utilisateur'
   estConnecte.value = false
-  
-  // 🚪 3. On pousse l'utilisateur vers la page de login
   router.push('/login')
 }
 
@@ -80,6 +86,7 @@ const peutVoirPilotageEtPaie = computed(() => ['admin', 'coordo'].includes(userR
             <span class="navbar-brand mb-0" style="color: var(--primary-color);">
               Avicenne Pay
             </span>
+            <span v-if="estConnecte" class="text-muted small me-2">{{ prenomUtilisateur }} &nbsp;</span>
             <span v-if="estConnecte" class="badge bg-secondary text-uppercase" style="font-size: 0.75rem;">{{ userRole }}</span>
           </div>
 
@@ -131,4 +138,3 @@ nav a {
   border-radius: 4px;
 }
 </style>
-

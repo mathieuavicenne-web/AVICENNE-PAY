@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
+from app.core.referentiels import Site, MATIERES, Role
 from app.schemas.user import (
     UserCreate, 
     UserOut, 
     UserUpdate, 
-    UserProfileUpdate, # 👈 Nouveau schéma  
+    UserProfileUpdate,
     PasswordChange, 
     AdminPasswordReset,
 )
@@ -64,75 +65,12 @@ def update_my_profile(
     
     return current_user
 
-@router.put("/{user_id}", response_model=UserOut)
-def update_user(
-    user_id: int,
-    user_in: UserUpdate,
-    db: Session = Depends(get_db),
-    # 🛡️ FastAPI bloque DIRECTEMENT l'accès si l'user n'est ni Admin ni Coordo
-    current_user: User = Depends(check_is_at_least_coordo)
-):
-    # 🔍 1. Recherche de l'utilisateur cible
-    user_to_edit = db.query(User).filter(User.id == user_id).first()
-    if not user_to_edit:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
-
-    # 🛡️ 2. Droits spécifiques pour le COORDO
-    if current_user.role == Role.coordo:
-        # Il ne peut éditer que les gens de son site
-        if user_to_edit.site != current_user.site:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="En tant que Coordinateur, vous ne pouvez éditer que les utilisateurs de votre site."
-            )
-        # Il ne peut éditer que les RESP et les TCP
-        if user_to_edit.role not in [Role.resp, Role.tcp]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Un Coordinateur ne peut éditer que des Responsables ou des TCP."
-            )
-
-    # 🧠 3. Extraction des données envoyées (sans toucher aux champs non renseignés)
-    update_data = user_in.model_dump(exclude_unset=True)
-    
-    # On simule les futures valeurs pour checker la cohérence
-    futur_role = update_data.get("role", user_to_edit.role)
-    futur_site = update_data.get("site", user_to_edit.site)
-    futur_prog = update_data.get("programme", user_to_edit.programme)
-    futur_mat = update_data.get("matiere", user_to_edit.matiere)
-
-    # 💥 4. LA RÈGLE STRICTE : Unicité du RESP par périmètre
-    if futur_role == Role.resp:
-        # On cherche s'il existe DÉJÀ un autre RESP sur ce même triplet (en excluant le user lui-même)
-        existing_resp = db.query(User).filter(
-            User.role == Role.resp,
-            User.site == futur_site,
-            User.programme == futur_prog,
-            User.matiere == futur_mat,
-            User.id != user_id 
-        ).first()
-
-        if existing_resp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Poste occupé : Le poste de Responsable pour {futur_site} / {futur_prog} / {futur_mat} est déjà attribué à {existing_resp.prenom} {existing_resp.nom}."
-            )
-
-    # 💾 5. Sauvegarde si tout est validé !
-    for key, value in update_data.items():
-        setattr(user_to_edit, key, value)
-
-    db.commit()
-    db.refresh(user_to_edit)
-    return user_to_edit
-
 # ── 👥 GESTION DES UTILISATEURS PAR LES MANAGERS ──
 
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
     user_in: UserCreate, 
     db: Session = Depends(get_db),
-    # 🛡️ FastAPI s'occupe de jeter les rôles non autorisés avant même de lire la suite !
     current_user: User = Depends(check_peut_creer_user)
 ):
     # 🤝 RÈGLE 1 : Le COORDO (Crée RESP et TCP de son SITE)
@@ -145,7 +83,7 @@ def create_user(
         if user_in.site != current_user.site:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Vous ne pouvez créer des utilisateurs que pour votre site ({current_user.site})."
+                detail=f"Vous ne pouvez créer des utilisateurs que pour votre site ({current_user.site.value})."
             )
 
     # 🎯 RÈGLE 2 : Le RESP (Crée les TCP de son SITE + PROG + MATIÈRE)
@@ -173,7 +111,7 @@ def create_user(
         if user_in.site != current_user.site:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Vous ne pouvez créer des commerciaux que pour votre site ({current_user.site})."
+                detail=f"Vous ne pouvez créer des commerciaux que pour votre site ({current_user.site.value})."
             )
 
     # --- SÉCURITÉ COMMUNE (Si l'Admin passe, ou si les règles ci-dessus sont respectées) ---
@@ -185,13 +123,59 @@ def create_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cet email est déjà utilisé."
         )
+
+    # 2. LA RÈGLE STRICTE : Unicité du COORDO par site
+    if user_in.role == Role.coordo:
+        existing_coordo = db.query(User).filter(
+            User.role == Role.coordo,
+            User.site == user_in.site,
+            User.is_active == True 
+        ).first()
+
+        if existing_coordo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Le poste de Coordinateur pour le site de {user_in.site.value} est déjà occupé par {existing_coordo.prenom} {existing_coordo.nom}."
+            )
+
+    # 💥 NOUVELLE RÈGLE : Renseignement obligatoire de site/programme/matiere pour RESP et TCP
+    if user_in.role in [Role.resp, Role.tcp]:
+        if not user_in.site or not user_in.programme or not user_in.matiere:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Le renseignement du Site, du Programme et de la Matière est impératif pour créer un {user_in.role.value}."
+            )
+
+    # 💥 NOUVELLE RÈGLE : Renseignement obligatoire du site pour TOP, TOP COM et COORDO
+    if user_in.role in [Role.top, Role.top_com, Role.coordo]:
+        if not user_in.site:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Le renseignement du Site est impératif pour créer un {user_in.role.value}."
+            )
+    
+    # 💥 NOUVELLE RÈGLE : Unicité stricte du RESP par triplet (Site / Prog / Mat)
+    if user_in.role == Role.resp:
+        existing_resp = db.query(User).filter(
+            User.role == Role.resp,
+            User.site == user_in.site,
+            User.programme == user_in.programme,
+            User.matiere == user_in.matiere,
+            User.is_active == True
+        ).first()
+
+        if existing_resp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Poste occupé : Le poste de Responsable pour {user_in.site.value} / {user_in.programme} / {user_in.matiere} est déjà attribué à {existing_resp.prenom} {existing_resp.nom}."
+            )
         
-    # 2. Hachage du mot de passe
+    # 3. Hachage du mot de passe
     user_data = user_in.model_dump()
     plain_password = user_data.pop("password")
     hashed_password = get_password_hash(plain_password)
     
-    # 3. Sauvegarde
+    # 4. Sauvegarde
     new_user = User(**user_data, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
@@ -243,7 +227,6 @@ def get_users(
 def toggle_user_status(
     user_id: int,
     db: Session = Depends(get_db),
-    # 🛡️ Ici, FastAPI bloque DIRECTEMENT l'accès si l'user n'est ni Admin ni Coordo
     current_user: User = Depends(check_is_at_least_coordo) 
 ):
     # 🔍 1. Recherche de l'utilisateur cible
@@ -268,7 +251,16 @@ def toggle_user_status(
             detail="Vous ne pouvez pas désactiver votre propre compte."
         )
         
-    # 🔄 4. Inversion du booléen is_active
+    # 💥 4. Sécurité ultime : Empêcher de désactiver le dernier Admin (Ajouté ici !)
+    if user_to_toggle.role == Role.admin and user_to_toggle.is_active:
+        total_admins_actifs = db.query(User).filter(User.role == Role.admin, User.is_active == True).count()
+        if total_admins_actifs <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Impossible de désactiver le dernier administrateur actif du système."
+            )
+
+    # 🔄 5. Inversion du booléen is_active
     user_to_toggle.is_active = not user_to_toggle.is_active
     
     db.commit()
@@ -308,6 +300,13 @@ def update_user(
     # 🧠 3. Extraction des données envoyées (sans toucher aux champs non renseignés)
     update_data = user_in.model_dump(exclude_unset=True)
     
+    # 🔐 AJOUT SÉCURITÉ : Traitement du mot de passe s'il est fourni
+    # Si le frontend a envoyé un mot de passe (et qu'il n'est pas vide), on le hache.
+    if "password" in update_data:
+        plain_password = update_data.pop("password")
+        if plain_password: 
+            update_data["hashed_password"] = get_password_hash(plain_password)
+
     # On simule les futures valeurs pour checker la cohérence
     futur_role = update_data.get("role", user_to_edit.role)
     futur_site = update_data.get("site", user_to_edit.site)
@@ -394,3 +393,14 @@ def admin_reset_password(
     db.commit()
     
     return {"message": f"Le mot de passe de {user_to_reset.email} a été réinitialisé avec succès."}
+
+# ── 👥 ROUTE REFERENTIELS ──
+
+@router.get("/constants/referentiels")
+def get_referentiels():
+    """Renvoie les listes de sites, rôles et matières pour le frontend."""
+    return {
+        "sites": [site.value for site in Site],
+        "roles": [role.value for role in Role],
+        "matieres": MATIERES
+    }

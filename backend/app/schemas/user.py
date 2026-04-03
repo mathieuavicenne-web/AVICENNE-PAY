@@ -1,5 +1,3 @@
-# backend/app/schemas/user.py
-
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Optional
 from app.core.referentiels import MATIERES, Role, Site, TypeContrat
@@ -15,45 +13,11 @@ class UserBase(BaseModel):
     ville: Optional[str] = None
 
 
-# ── 2. INSCRIPTION / CRÉATION ───────────────────────────────────────────────
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=6)
-    role: Role = Role.admin
-    site: Optional[Site] = None
-    programme: Optional[str] = None
-    matiere: Optional[str] = None
-
-
-# ── 3. MISE À JOUR PAR L'UTILISATEUR (Son Profil) ──────────────────────────
-class UserProfileUpdate(BaseModel):
+# ── 📦 CLASSE INTERMÉDIAIRE (Pour mutualiser les validateurs) ────────────────
+class UserPedago(BaseModel):
     """
-    Champs que l'utilisateur lambda peut modifier lui-même.
+    Classe utilitaire pour centraliser la validation du couple Programme/Matière.
     """
-    nom: Optional[str] = None
-    prenom: Optional[str] = None
-    telephone: Optional[str] = None
-    adresse: Optional[str] = None
-    code_postal: Optional[str] = None
-    ville: Optional[str] = None
-    
-    # 🇫🇷 Validation NSS : 15 chiffres (ex: 123456789012345)
-    nss: Optional[str] = Field(None, pattern=r"^[12]\d{14}$") 
-    
-    # 🏦 Validation IBAN FR : "FR" suivi de 25 caractères alphanumériques
-    iban: Optional[str] = Field(None, pattern=r"^FR\d{2}[A-Z0-9]{4}\d{7}[A-Z0-9]{10}\d{2}$")
-
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-# ── 4. MISE À JOUR PAR L'ADMIN (Anciennement ton UserUpdate) ────────────────
-class UserUpdate(UserProfileUpdate):
-    """
-    L'admin hérite de tout ce que le user peut modifier, 
-    mais lui peut toucher au pro (rôle, etc).
-    """
-    email: Optional[EmailStr] = None
-    role: Optional[Role] = None
-    is_active: Optional[bool] = None
-    site: Optional[Site] = None
     programme: Optional[str] = None
     matiere: Optional[str] = None
 
@@ -77,6 +41,49 @@ class UserUpdate(UserProfileUpdate):
         return v
 
 
+# ── 2. INSCRIPTION / CRÉATION ───────────────────────────────────────────────
+# 💡 Hérite de UserBase ET de UserPedago !
+class UserCreate(UserBase, UserPedago):
+    password: str = Field(..., min_length=6)
+    role: Role = Role.admin
+    site: Optional[Site] = None
+
+
+# ── 3. MISE À JOUR PAR L'UTILISATEUR (Son Profil) ──────────────────────────
+class UserProfileUpdate(BaseModel):
+    """
+    Champs que l'utilisateur lambda peut modifier lui-même.
+    """
+    nom: Optional[str] = None
+    prenom: Optional[str] = None
+    telephone: Optional[str] = None
+    adresse: Optional[str] = None
+    code_postal: Optional[str] = None
+    ville: Optional[str] = None
+    
+    # 🇫🇷 Validation NSS : 15 chiffres
+    nss: Optional[str] = Field(None, pattern=r"^[12]\d{14}$") 
+    
+    # 🏦 Validation IBAN FR
+    iban: Optional[str] = Field(None, pattern=r"^FR\d{2}[A-Z0-9]{4}\d{7}[A-Z0-9]{10}\d{2}$")
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+# ── 4. MISE À JOUR PAR L'ADMIN ──────────────────────────────────────────────
+# 💡 Hérite de UserProfileUpdate ET de UserPedago !
+class UserUpdate(UserProfileUpdate, UserPedago):
+    """
+    L'admin hérite de tout ce que le user peut modifier, 
+    mais lui peut toucher au pro (rôle, etc).
+    """
+    email: Optional[EmailStr] = None
+    role: Optional[Role] = None
+    is_active: Optional[bool] = None
+    site: Optional[Site] = None
+    password: Optional[str] = Field(None, min_length=6)
+
+
 # ── 5. SORTIE (Ce que l'API renvoie au Front) ──────────────────────────────
 class UserOut(UserBase):
     id: int
@@ -87,10 +94,10 @@ class UserOut(UserBase):
     matiere: Optional[str] = None
     profil_complete: bool
     
-    # Propriété déduite du rôle (calculée automatiquement)
     type_contrat: Optional[TypeContrat] = None 
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # ── 6. SÉCURITÉ MOTS DE PASSE ──────────────────────────────────────────────
 class PasswordChange(BaseModel):

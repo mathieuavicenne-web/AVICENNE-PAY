@@ -1,30 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { authService } from '@/services/api' // 👈 On importe notre service API
 
 const userRole = ref('')
-const prenomUtilisateur = ref('Utilisateur') // Valeur par défaut
+const prenomUtilisateur = ref('Utilisateur') // Valeur par défaut en attendant l'API
 
-// 🕵️‍♂️ On va chercher le rôle et le prénom directement dans le token stocké
-onMounted(() => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    try {
-      const base64Url = token.split('.')[1]
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      }).join(''))
-
-      const decoded = JSON.parse(jsonPayload)
-      userRole.value = decoded.role
-      
-      // Si ton backend renvoie le prénom dans le JWT, on le récupère ici :
-      if (decoded.prenom) {
-        prenomUtilisateur.value = decoded.prenom
-      }
-    } catch (error) {
-      console.error("Erreur de lecture du token sur l'accueil", error)
-    }
+onMounted(async () => {
+  try {
+    // 1. On récupère les vraies données depuis le backend (FastAPI) !
+    const userData = await authService.getUserProfile()
+    prenomUtilisateur.value = userData.prenom
+    userRole.value = userData.role
+  } catch (error) {
+    console.error("Erreur lors de la récupération du profil sur l'accueil", error)
   }
 })
 </script>
@@ -77,7 +65,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Un petit effet au survol des cartes pour faire pro ! */
 .hover-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

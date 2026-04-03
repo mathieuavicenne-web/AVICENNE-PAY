@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import ProfilView from '@/views/ProfilView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,15 +10,21 @@ const router = createRouter({
       redirect: { name: 'dashboard' } // 💡 Redirige l'adresse de base vers le tableau de bord
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: HomeView,
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue')
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: DashboardView, // 🟢 Utilise bien notre DashboardView !
+      meta: { requiresAuth: true }  
+    },
+    {
+      path: '/profil',
+      name: 'profil',
+      component: ProfilView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/declarations',
@@ -28,8 +35,8 @@ const router = createRouter({
     {
       path: '/utilisateurs',
       name: 'utilisateurs',
-      component: () => import('../views/HomeView.vue'),
-      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] } // 🔐 Filtrage par rôle !
+      component: () => import('../views/UtilisateursView.vue'),
+      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] }
     },
     {
       path: '/catalogue-ccda',
@@ -59,7 +66,7 @@ const router = createRouter({
 })
 
 // 🛡️ LE GARDE-FRONTIÈRE (Navigation Guard)
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
   let userRole = null
 
@@ -79,17 +86,16 @@ router.beforeEach((to, from, next) => {
 
   // 🚪 Règle 1 : Si la page demande à être connecté et qu'on n'a pas de token -> Direction Login
   if (to.meta.requiresAuth && !token) {
-    next({ name: 'login' })
+    return { name: 'login' } // 🟢 Méthode moderne sans next() !
   } 
+  
   // ⛔ Règle 2 : Si la page demande des rôles spécifiques et que l'utilisateur n'a pas le bon
-  else if (to.meta.rolesAutorises && !to.meta.rolesAutorises.includes(userRole)) {
+  if (to.meta.rolesAutorises && !to.meta.rolesAutorises.includes(userRole)) {
     alert("Accès interdit : Vous n'avez pas les droits nécessaires.")
-    next({ name: 'home' }) // On le redirige vers l'accueil
+    return { name: 'dashboard' } // 🟢 On le renvoie vers le dashboard plutôt que 'home' qui n'existe pas
   } 
-  // 🟢 Règle 3 : Tout est OK, on laisse passer
-  else {
-    next()
-  }
+
+  // 🟢 Règle 3 : Tout est OK, on laisse passer (pas besoin de retourner quoi que ce soit)
 })
 
 export default router
