@@ -1,16 +1,29 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue' 
-import { userService } from '@/services/api'
-import { getReferentiels } from '@/services/api'
+import { userService, authService, getReferentiels } from '@/services/api'
 
 const utilisateurs = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
 
+const idUserConnecte = ref(null)
+const roleUserConnecte = ref('')
+const siteUserConnecte = ref('') 
+const programmeUserConnecte = ref('') // 📍 Stocke le programme du user connecté
+const matiereUserConnectee = ref('')  // 📍 Stocke la matière du user connecté
+const peutGererUtilisateurs = ref(false)
+
+// --- État pour la recherche ---
+const recherche = ref('')
+
+// --- États pour le tri ---
+const colonneTriee = ref('nom')
+const ordreTri = ref('asc')
+
 // --- États pour le formulaire ---
 const afficherFormulaire = ref(false)
 const isSubmitting = ref(false)
-const isEditing = ref(false) // 🔵 Flag pour savoir si on est en train de modifier
+const isEditing = ref(false)
 
 const referentiels = ref({
   sites: [],
@@ -31,6 +44,24 @@ const nouveauUser = ref({
 
 const matieresDisponibles = ref([])
 
+// 🔥 Calcule si le rôle sélectionné a besoin d'un programme et d'une matière (uniquement TCP et RESP)
+const besoinPedago = computed(() => {
+  return ['tcp', 'resp'].includes(nouveauUser.value.role)
+})
+
+// On surveille le rôle pour masquer et vider les programmes/matières si le profil n'en a pas besoin
+watch(() => nouveauUser.value.role, (nouveauRole) => {
+  if (!besoinPedago.value) {
+    nouveauUser.value.programme = ''
+    nouveauUser.value.matiere = ''
+    matieresDisponibles.value = []
+  }
+  // 🔥 Si le nouveau rôle est admin, on vide aussi le site
+  if (nouveauRole === 'admin') {
+    nouveauUser.value.site = ''
+  }
+})
+
 // On surveille le programme pour charger les matières sans crasher
 watch(() => nouveauUser.value.programme, (nouveauProgramme) => {
   nouveauUser.value.matiere = '' // On reset la matière
@@ -41,10 +72,91 @@ watch(() => nouveauUser.value.programme, (nouveauProgramme) => {
   }
 })
 
+// Fonction pour changer la colonne de tri
+const changerTri = (colonne) => {
+  if (colonneTriee.value === colonne) {
+    ordreTri.value = ordreTri.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    colonneTriee.value = colonne
+    ordreTri.value = 'asc'
+  }
+}
+
+// 🔥 1. Rôles autorisés selon qui est connecté
+const rolesAutorises = computed(() => {
+  const role = roleUserConnecte.value
+  
+  if (role === 'admin') return referentiels.value.roles
+  if (role === 'coordo') return ['resp', 'tcp']
+  if (role === 'top_com') return ['com'] 
+  if (role === 'resp') return ['tcp']
+  
+  return []
+})
+
+// 🔥 2. Sites autorisés selon qui est connecté
+const sitesAutorises = computed(() => {
+  const role = roleUserConnecte.value
+  if (role === 'admin') return referentiels.value.sites
+  
+  if (['coordo', 'top_com', 'resp'].includes(role) && siteUserConnecte.value) {
+    return [siteUserConnecte.value]
+  }
+  return []
+})
+
+// 🔥 Tableau filtré ET trié réactif
+const utilisateursTries = computed(() => {
+  let resultat = [...utilisateurs.value]
+  
+  if (recherche.value.trim() !== '') {
+    const terme = recherche.value.toLowerCase().trim()
+    resultat = resultat.filter(user => {
+      return (
+        (user.nom && user.nom.toLowerCase().includes(terme)) ||
+        (user.prenom && user.prenom.toLowerCase().includes(terme)) ||
+        (user.email && user.email.toLowerCase().includes(terme)) ||
+        (user.role && user.role.toLowerCase().includes(terme)) ||
+        (user.site && user.site.toLowerCase().includes(terme)) ||
+        (user.programme && user.programme.toLowerCase().includes(terme)) ||
+        (user.matiere && user.matiere.toLowerCase().includes(terme))
+      )
+    })
+  }
+
+  return resultat.sort((a, b) => {
+    let valeurA = a[colonneTriee.value]
+    let valeurB = b[colonneTriee.value]
+
+    if (valeurA === null || valeurA === undefined) valeurA = ''
+    if (valeurB === null || valeurB === undefined) valeurB = ''
+
+    if (typeof valeurA === 'string' && typeof valeurB === 'string') {
+      valeurA = valeurA.toLowerCase()
+      valeurB = valeurB.toLowerCase()
+    }
+
+    if (valeurA < valeurB) return ordreTri.value === 'asc' ? -1 : 1
+    if (valeurA > valeurB) return ordreTri.value === 'asc' ? 1 : -1
+    return 0
+  })
+})
+
 const chargerDonnees = async () => {
   isLoading.value = true
   
   try {
+    const me = await authService.getUserProfile()
+    idUserConnecte.value = me.id
+    roleUserConnecte.value = me.role
+    siteUserConnecte.value = me.site || '' 
+    programmeUserConnecte.value = me.programme || '' // 📍 On mémorise le programme du resp
+    matiereUserConnectee.value = me.matiere || ''   // 📍 On mémorise la matière du resp
+    
+    peutGererUtilisateurs.value = ['admin', 'coordo', 'top_com', 'resp'].includes(roleUserConnecte.value)
+
+    console.log("Mon rôle identifié :", roleUserConnecte.value, "sur le site :", siteUserConnecte.value)
+
     const usersData = await userService.getAllUsers()
     if (Array.isArray(usersData)) {
       utilisateurs.value = usersData
@@ -65,8 +177,9 @@ const chargerDonnees = async () => {
     const refsData = await getReferentiels()
     referentiels.value = refsData
     
-    if (refsData.sites && refsData.sites.length > 0 && !isEditing.value) {
-      nouveauUser.value.site = refsData.sites[0]
+    if (!isEditing.value) {
+      nouveauUser.value.role = rolesAutorises.value[0] || 'tcp'
+      nouveauUser.value.site = nouveauUser.value.role === 'admin' ? '' : (sitesAutorises.value[0] || '')
     }
   } catch (error) {
     console.error("Erreur lors du chargement des référentiels :", error)
@@ -81,24 +194,22 @@ onMounted(() => {
 
 const basculerFormulaire = () => {
   errorMessage.value = ''
-  isEditing.value = false // 🔵 On s'assure qu'on est en mode création
+  isEditing.value = false 
   afficherFormulaire.value = !afficherFormulaire.value
   if (!afficherFormulaire.value) {
     annulerEtFermer()
   }
 }
 
-// 🔵 Fonction déclenchée quand on clique sur "Modifier" dans le tableau
 const editerUtilisateur = (user) => {
   errorMessage.value = ''
   isEditing.value = true
   afficherFormulaire.value = true
   
-  // On remplit le formulaire avec les données de l'utilisateur cliqué
   nouveauUser.value = {
-    id: user.id, // On garde l'ID pour savoir qui modifier
+    id: user.id, 
     email: user.email,
-    password: '', // On n'affiche pas le mot de passe actuel par sécurité
+    password: '', 
     prenom: user.prenom,
     nom: user.nom,
     role: user.role,
@@ -107,10 +218,8 @@ const editerUtilisateur = (user) => {
     matiere: user.matiere || ''
   }
 
-  // Petit hack pour forcer le chargement des matières correspondantes au programme
   if (user.programme && referentiels.value.matieres[user.programme]) {
     matieresDisponibles.value = referentiels.value.matieres[user.programme]
-    // On doit réassigner la matière APRES le chargement de la liste
     setTimeout(() => {
       nouveauUser.value.matiere = user.matiere || ''
     }, 0)
@@ -122,7 +231,9 @@ const annulerEtFermer = () => {
   isEditing.value = false
   nouveauUser.value = {
     email: '', password: '', prenom: '', nom: '',
-    role: 'tcp', site: referentiels.value.sites[0] || '', programme: '', matiere: ''
+    role: rolesAutorises.value[0] || 'tcp', 
+    site: rolesAutorises.value[0] === 'admin' ? '' : (sitesAutorises.value[0] || ''), 
+    programme: '', matiere: ''
   }
 }
 
@@ -132,17 +243,23 @@ const soumettreFormulaire = async () => {
   try {
     const donneesAEnvoyer = { ...nouveauUser.value }
 
-    if (donneesAEnvoyer.role === 'admin' && !donneesAEnvoyer.site) {
+    // 🔥 Héritage automatique si le RESP gère un TCP
+    if (roleUserConnecte.value === 'resp' && donneesAEnvoyer.role === 'tcp') {
+      donneesAEnvoyer.site = siteUserConnecte.value
+      donneesAEnvoyer.programme = programmeUserConnecte.value
+      donneesAEnvoyer.matiere = matiereUserConnectee.value
+    }
+
+    // Si on crée un admin, on s'assure que le site envoyé est null
+    if (donneesAEnvoyer.role === 'admin') {
       donneesAEnvoyer.site = null
     }
 
     if (!donneesAEnvoyer.programme) donneesAEnvoyer.programme = null
     if (!donneesAEnvoyer.matiere) donneesAEnvoyer.matiere = null
 
-    // 🔵 Tri selon qu'on crée ou qu'on modifie
     if (isEditing.value) {
       const { id, ...payload } = donneesAEnvoyer
-      // Si le mot de passe est vide, on ne l'envoie pas pour ne pas l'écraser
       if (!payload.password) delete payload.password
       
       console.log(`🚀 Mise à jour du user ${id} :`, payload)
@@ -170,7 +287,7 @@ const getRoleBadgeClass = (role) => {
     'admin': 'bg-danger',
     'coordo': 'bg-warning text-dark',
     'resp': 'bg-primary',
-    'top': 'bg-info text-dark',
+    'top_com': 'bg-info text-dark',
     'tcp': 'bg-success',
     'com': 'bg-secondary'
   }
@@ -203,7 +320,12 @@ const basculerStatut = async (user) => {
         <h1 class="fw-bold" style="color: var(--primary-color);">Gestion des Utilisateurs</h1>
         <p class="text-muted">Visualisez et gérez les utilisateurs selon votre périmètre de droits.</p>
       </div>
-      <button class="btn btn-primary" @click="basculerFormulaire">
+      
+      <button 
+        v-if="peutGererUtilisateurs"
+        class="btn btn-primary" 
+        @click="basculerFormulaire"
+      >
         {{ afficherFormulaire ? '✖ Masquer le formulaire' : '+ Ajouter un utilisateur' }}
       </button>
     </div>
@@ -238,29 +360,27 @@ const basculerStatut = async (user) => {
             <div class="col-md-3">
               <label class="form-label fw-bold small">Rôle</label>
               <select v-model="nouveauUser.role" class="form-select form-select-sm" required>
-                <option v-for="role in referentiels.roles" :key="role" :value="role">
+                <option v-for="role in rolesAutorises" :key="role" :value="role">
                   {{ role.toUpperCase() }}
                 </option>
               </select>
             </div>
 
-            <div class="col-md-3">
-              <label class="form-label fw-bold small">
-                Site <span v-if="nouveauUser.role === 'admin'" class="text-muted fw-normal">(Optionnel)</span>
-              </label>
+            <div class="col-md-3" v-if="nouveauUser.role !== 'admin' && !(roleUserConnecte === 'resp' && nouveauUser.role === 'tcp')">
+              <label class="form-label fw-bold small">Site</label>
               <select 
                 v-model="nouveauUser.site" 
                 class="form-select form-select-sm" 
-                :required="nouveauUser.role !== 'admin'"
+                required
               >
                 <option value="">-- Sélectionner --</option>
-                <option v-for="site in referentiels.sites" :key="site" :value="site">
+                <option v-for="site in sitesAutorises" :key="site" :value="site">
                   {{ site }}
                 </option>
               </select>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-3" v-if="besoinPedago && !(roleUserConnecte === 'resp' && nouveauUser.role === 'tcp')">
               <label class="form-label fw-bold small">Programme (Optionnel)</label>
               <select v-model="nouveauUser.programme" class="form-select form-select-sm">
                 <option value="">-- Sélectionner --</option>
@@ -270,7 +390,7 @@ const basculerStatut = async (user) => {
               </select>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-3" v-if="besoinPedago && !(roleUserConnecte === 'resp' && nouveauUser.role === 'tcp')">
               <label class="form-label fw-bold small">Matière (Optionnel)</label>
               <select v-model="nouveauUser.matiere" class="form-select form-select-sm" :disabled="!nouveauUser.programme">
                 <option value="">-- Sélectionner --</option>
@@ -292,6 +412,25 @@ const basculerStatut = async (user) => {
       </div>
     </div>
 
+    <div class="row mb-3">
+      <div class="col-md-4 ms-auto">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white border-end-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-search text-muted" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+            </svg>
+          </span>
+          <input 
+            v-model="recherche" 
+            type="text" 
+            class="form-control border-start-0 ps-1" 
+            placeholder="Rechercher un nom, email, site, rôle..."
+          >
+          <button v-if="recherche" class="btn btn-outline-secondary" type="button" @click="recherche = ''">✖</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="isLoading" class="text-center my-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Chargement...</span>
@@ -304,35 +443,70 @@ const basculerStatut = async (user) => {
           <table class="table table-hover mb-0 align-middle">
             <thead class="table-light">
               <tr>
-                <th class="ps-4">Nom / Prénom</th>
-                <th>Email</th>
-                <th>Site</th>
-                <th>Rôle</th>
-                <th>Statut</th>
-                <th class="text-center pe-4">Actions</th>
+                <th class="ps-4 th-triable" @click="changerTri('nom')">
+                  NOM <span class="tri-icon">{{ colonneTriee === 'nom' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('prenom')">
+                  PRÉNOM <span class="tri-icon">{{ colonneTriee === 'prenom' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('site')">
+                  SITE <span class="tri-icon">{{ colonneTriee === 'site' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('role')">
+                  RÔLE <span class="tri-icon">{{ colonneTriee === 'role' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('programme')">
+                  PROGRAMME <span class="tri-icon">{{ colonneTriee === 'programme' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('matiere')">
+                  MATIÈRE <span class="tri-icon">{{ colonneTriee === 'matiere' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('email')">
+                  EMAIL <span class="tri-icon">{{ colonneTriee === 'email' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="th-triable" @click="changerTri('is_active')">
+                  STATUT <span class="tri-icon">{{ colonneTriee === 'is_active' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="text-center pe-4" v-if="peutGererUtilisateurs">
+                  ACTIONS
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in utilisateurs" :key="user.id">
-                <td class="ps-4 fw-bold">{{ user.prenom }} {{ user.nom.toUpperCase() }}</td>
+              <tr v-if="utilisateursTries.length === 0">
+                <td colspan="9" class="text-center text-muted py-4">
+                  Aucun utilisateur trouvé.
+                </td>
+              </tr>
+              
+              <tr v-for="user in utilisateursTries" :key="user.id">
+                <td class="ps-4 fw-bold text-uppercase">{{ user.nom }}</td>
+                <td>{{ user.prenom }}</td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ user.site || 'N/A' }}</span>
+                </td>
+                <td>
+                  <span class="badge text-uppercase" :class="getRoleBadgeClass(user.role)">{{ user.role }}</span>
+                </td>
+                <td>{{ user.programme || '-' }}</td>
+                <td>{{ user.matiere || '-' }}</td>
                 <td>{{ user.email }}</td>
-                <td><span class="badge bg-light text-dark border">{{ user.site || 'N/A' }}</span></td>
-                <td><span class="badge text-uppercase" :class="getRoleBadgeClass(user.role)">{{ user.role }}</span></td>
                 <td>
                   <span v-if="user.is_active" class="badge bg-soft-success text-success">Actif</span>
                   <span v-else class="badge bg-soft-danger text-danger">Inactif</span>
                 </td>
-                <td class="text-center pe-4">
-                    <button class="btn btn-sm btn-outline-secondary me-2" @click="editerUtilisateur(user)">Modifier</button>
-                    
-                    <button 
-                        class="btn btn-sm" 
-                        :class="user.is_active ? 'btn-outline-danger' : 'btn-outline-success'"
-                        @click="basculerStatut(user)"
-                        :disabled="user.role === 'admin' && user.is_active && totalAdminsActifs <= 1"
-                    >
-                        {{ user.is_active ? 'Désactiver' : 'Activer' }}
-                    </button>
+                
+                <td class="text-center pe-4" v-if="peutGererUtilisateurs">
+                  <button class="btn btn-sm btn-outline-secondary me-2" @click="editerUtilisateur(user)">Modifier</button>
+                  
+                  <button 
+                    class="btn btn-sm" 
+                    :class="user.is_active ? 'btn-outline-danger' : 'btn-outline-success'"
+                    @click="basculerStatut(user)"
+                    :disabled="(user.role === 'admin' && user.is_active && totalAdminsActifs <= 1) || user.id === idUserConnecte"
+                  >
+                    {{ user.is_active ? 'Désactiver' : 'Activer' }}
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -349,4 +523,7 @@ const basculerStatut = async (user) => {
 .bg-soft-danger { background-color: #f8d7da; }
 .text-danger { color: #842029 !important; }
 .bg-light { background-color: #f8f9fa !important; }
+.th-triable { cursor: pointer; position: relative; transition: background-color 0.2s ease; }
+.th-triable:hover { background-color: #e9ecef !important; }
+.tri-icon { display: inline-block; width: 15px; font-size: 0.8rem; margin-left: 5px; }
 </style>

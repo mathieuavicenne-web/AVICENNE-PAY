@@ -36,7 +36,7 @@ const router = createRouter({
       path: '/utilisateurs',
       name: 'utilisateurs',
       component: () => import('../views/UtilisateursView.vue'),
-      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] }
+      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo', 'resp', 'top_com'] }
     },
     {
       path: '/catalogue-ccda',

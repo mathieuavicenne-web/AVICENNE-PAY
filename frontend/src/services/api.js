@@ -91,7 +91,7 @@ export const userService = {
     }
   },
 
-  // CREATION UTILISATEUR
+  // 👤 CREATION UTILISATEUR
   async createUser(userData) {
     const token = localStorage.getItem('token')
     if (!token) throw new Error("Aucun token trouvé")
@@ -109,7 +109,23 @@ export const userService = {
     }
   },
 
-  // BASCULER LE STATUT ACTIF/INACTIF
+  // 👤 RÉCUPÉRER LE PROFIL DE L'UTILISATEUR CONNECTÉ
+  async getProfile() {
+    const token = localStorage.getItem('token')
+    if (!token) throw new Error("Aucun token trouvé")
+
+    try {
+      const response = await api.get('/users/me', { // 👈 ou l'URL exacte de ton endpoint "me"
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      return response.data
+    } catch (error) {
+      console.error("Impossible de récupérer le profil connecté :", error)
+      throw error
+    }
+  },
+
+  // 👤 BASCULER LE STATUT ACTIF/INACTIF
   async toggleUserStatus(userId) {
     const token = localStorage.getItem('token')
     if (!token) throw new Error("Aucun token trouvé")
@@ -125,7 +141,7 @@ export const userService = {
     }
   },
 
-  // 🔵 MISE À JOUR DE L'UTILISATEUR
+  // 👤 MISE À JOUR DE L'UTILISATEUR
   async updateUser(userId, userData) {
     const token = localStorage.getItem('token')
     if (!token) throw new Error("Aucun token trouvé")

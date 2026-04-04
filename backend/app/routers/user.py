@@ -3,6 +3,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.database import get_db
 from app.models.user import User
@@ -101,8 +102,8 @@ def create_user(
                 detail="Vous ne pouvez créer des TCP que dans votre strict périmètre (Site, Programme et Matière identiques au vôtre)."
             )
 
-    # 📈 RÈGLE 3 : Le TOP COM (Crée les COM de son SITE)
-    elif current_user.role == Role.top:
+   # 📈 RÈGLE 3 : Le TOP COM (Crée les COM de son SITE)
+    elif current_user.role == Role.top_com:  # 👈 Corrigé ici !
         if user_in.role != Role.com:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -115,7 +116,6 @@ def create_user(
             )
 
     # --- SÉCURITÉ COMMUNE (Si l'Admin passe, ou si les règles ci-dessus sont respectées) ---
-    
     # 1. Vérification doublon email
     email_exists = db.query(User).filter(User.email == user_in.email).first()
     if email_exists:
@@ -194,27 +194,36 @@ def get_users(
     if current_user.role == Role.admin:
         pass 
         
-    # 🛡️ RÈGLE 2 : Le COORDO voit les RESP et TCP de son SITE
+    # 🛡️ RÈGLE 2 : Le COORDO voit les RESP et TCP de son SITE + lui-même
     elif current_user.role == Role.coordo:
         query = query.filter(
             User.site == current_user.site,
-            User.role.in_([Role.resp, Role.tcp])
+            or_(
+                User.role.in_([Role.resp, Role.tcp]),
+                User.id == current_user.id
+            )
         )
         
-    # 🛡️ RÈGLE 3 : Le RESP voit uniquement les TCP de son triplet (Site/Prog/Mat)
+    # 🛡️ RÈGLE 3 : Le RESP voit uniquement les TCP de son triplet (Site/Prog/Mat) + lui-même
     elif current_user.role == Role.resp:
         query = query.filter(
             User.site == current_user.site,
             User.programme == current_user.programme,
             User.matiere == current_user.matiere,
-            User.role == Role.tcp
+            or_(
+                User.role == Role.tcp,
+                User.id == current_user.id
+            )
         )
         
-    # 🛡️ RÈGLE 4 : Le TOP COM voit uniquement les COM de son SITE
-    elif current_user.role == Role.top:
+    # 🛡️ RÈGLE 4 : Le TOP COM voit les COM de son SITE + lui-même
+    elif current_user.role == Role.top_com:
         query = query.filter(
             User.site == current_user.site,
-            User.role == Role.com
+            or_(
+                User.role == Role.com,
+                User.id == current_user.id
+            )
         )
         
     # 🛡️ RÈGLE 5 : Les exécutants (TCP, COM) ne voient qu'eux-mêmes

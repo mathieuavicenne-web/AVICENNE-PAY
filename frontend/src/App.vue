@@ -65,10 +65,10 @@ const seDeconnecter = () => {
 }
 
 // --- 🔐 LOGIQUE DES ROLES ---
-const peutVoirGestionUtilisateurs = computed(() => ['admin', 'coordo'].includes(userRole.value))
+const peutVoirGestionUtilisateurs = computed(() => ['admin', 'coordo', 'resp', 'top_com'].includes(userRole.value))
 const peutVoirCcda = computed(() => ['admin', 'coordo'].includes(userRole.value))
 const peutVoirCcdu = computed(() => userRole.value === 'admin')
-const peutVoirPilotageEtPaie = computed(() => ['admin', 'coordo'].includes(userRole.value))
+const peutVoirPilotageEtPaie = computed(() => userRole.value === 'admin')
 </script>
 
 <template>
