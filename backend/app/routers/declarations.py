@@ -1,16 +1,18 @@
-# backend/routers/declarations.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List
-from sqlalchemy.orm import Session
+from typing import List, TYPE_CHECKING
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
+from datetime import datetime
 from app.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User, Role
+from app.models.mission import Mission, TypeContratMission
 from app.models.declaration import Declaration, LigneDeclaration, StatutDeclaration
-from app.models.mission import Mission
 from app.schemas.declaration import DeclarationCreate, DeclarationOut, DeclarationUpdate, DeclarationReview
 from app.core.security import check_peut_valider_declaration
+
+if TYPE_CHECKING:
+    from app.models.mission import Mission
 
 router = APIRouter(prefix="/declarations", tags=["Déclarations"])
 
@@ -19,23 +21,40 @@ router = APIRouter(prefix="/declarations", tags=["Déclarations"])
 def create_declaration(
     declaration_in: DeclarationCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # 🔒 On injecte l'utilisateur connecté
+    current_user: User = Depends(get_current_user)
 ):
-    
-    # 1. On crée l'enveloppe de la déclaration
+    # ❌ RÈGLE 1 : Les Admins ne saisissent pas de déclaration
+    if current_user.role == Role.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Les administrateurs ne peuvent pas saisir de déclarations."
+        )
+
+    # 🛑 RÈGLE 2 : Pas de doublon (1 déclaration max par mois et par utilisateur)
+    existing_declaration = db.query(Declaration).filter(
+        Declaration.user_id == current_user.id,
+        Declaration.mois == declaration_in.mois,
+        Declaration.annee == declaration_in.annee
+    ).first()
+
+    if existing_declaration:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Vous avez déjà créé une déclaration pour le mois {declaration_in.mois}/{declaration_in.annee}."
+        )
+
+    # Création de l'enveloppe
     db_declaration = Declaration(
-        user_id=current_user.id, # 👤 On utilise le VRAI ID extrait du Token JWT !
+        user_id=current_user.id,
         mois=declaration_in.mois,
         annee=declaration_in.annee,
         statut=StatutDeclaration.brouillon
     )
     
     db.add(db_declaration)
-    db.flush() # Récupère l'ID de la déclaration sans valider la transaction complète
+    db.flush() 
     
-    # 2. On traite chaque ligne envoyée
     for ligne in declaration_in.lignes:
-        # On va chercher la mission en base pour connaître son tarif actuel
         db_mission = db.query(Mission).filter(Mission.id == ligne.mission_id).first()
         
         if not db_mission:
@@ -45,12 +64,30 @@ def create_declaration(
                 detail=f"La mission avec l'ID {ligne.mission_id} n'existe pas."
             )
             
-        # On crée la ligne avec le tarif "photographié" au moment de la déclaration
+        # 🛡️ RÈGLE 3 : Cloisonnement des catalogues de missions
+        # Coordos, Top Com, Top -> Uniquement CDDU ou BOTH
+        if current_user.role in [Role.coordo, Role.top_com, Role.top]:
+            if db_mission.type_contrat not in [TypeContratMission.cddu, TypeContratMission.both]:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"La mission '{db_mission.titre}' n'est pas accessible avec un contrat CDDU."
+                )
+                
+        # Resp, TCP -> Uniquement CCDA ou BOTH
+        elif current_user.role in [Role.resp, Role.tcp]:
+            if db_mission.type_contrat not in [TypeContratMission.ccda, TypeContratMission.both]:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"La mission '{db_mission.titre}' n'est pas accessible avec un contrat CCDA."
+                )
+            
         db_ligne = LigneDeclaration(
             declaration_id=db_declaration.id,
             mission_id=ligne.mission_id,
             quantite=ligne.quantite,
-            tarif_applique=db_mission.tarif_unitaire # 💡 Toujours magique !
+            tarif_applique=db_mission.tarif_unitaire 
         )
         db.add(db_ligne)
         
@@ -65,14 +102,13 @@ def update_declaration(
     declaration_id: int, 
     declaration_in: DeclarationUpdate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # 🔒 Authentification requise
+    current_user: User = Depends(get_current_user)
 ):
     db_declaration = db.query(Declaration).filter(Declaration.id == declaration_id).first()
     
     if not db_declaration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Déclaration introuvable.")
         
-    # 🔒 SÉCURITÉ : Est-ce que cette déclaration appartient bien à l'utilisateur connecté ?
     if db_declaration.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -101,12 +137,28 @@ def update_declaration(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"La mission avec l'ID {ligne.mission_id} n'existe pas."
                 )
+
+            # 🛡️ RÈGLE 3 : Cloisonnement (Le rappel lors de l'Update)
+            if current_user.role in [Role.coordo, Role.top_com, Role.top]:
+                if db_mission.type_contrat not in [TypeContratMission.cddu, TypeContratMission.both]:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"La mission '{db_mission.titre}' n'est pas accessible avec un contrat CDDU."
+                    )
+            elif current_user.role in [Role.resp, Role.tcp]:
+                if db_mission.type_contrat not in [TypeContratMission.ccda, TypeContratMission.both]:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"La mission '{db_mission.titre}' n'est pas accessible avec un contrat CCDA."
+                    )
                 
             db_ligne = LigneDeclaration(
                 declaration_id=db_declaration.id,
                 mission_id=ligne.mission_id,
                 quantite=ligne.quantite,
-                tarif_applique=db_mission.tarif_unitaire 
+                tarif_applique=db_mission.tarif_unitaire
             )
             db.add(db_ligne)
             
@@ -119,14 +171,13 @@ def update_declaration(
 def soumettre_declaration(
     declaration_id: int, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # 🔒 Authentification requise
+    current_user: User = Depends(get_current_user)
 ):
     db_declaration = db.query(Declaration).filter(Declaration.id == declaration_id).first()
     
     if not db_declaration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Déclaration introuvable.")
         
-    # 🔒 SÉCURITÉ : Est-ce que cette déclaration appartient bien à l'utilisateur connecté ?
     if db_declaration.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -144,20 +195,35 @@ def soumettre_declaration(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Impossible de soumettre une déclaration vide sans aucune mission."
         )
+
+    # ⏱️ RÈGLE 4 : Règle du 20 du mois
+    maintenant = datetime.now()
+    interdit = False
+    
+    if maintenant.year < db_declaration.annee:
+        interdit = True
+    elif maintenant.year == db_declaration.annee and maintenant.month < db_declaration.mois:
+        interdit = True
+    elif maintenant.year == db_declaration.annee and maintenant.month == db_declaration.mois and maintenant.day < 20:
+        interdit = True
+
+    if interdit:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Il est impossible de soumettre la déclaration de {db_declaration.mois}/{db_declaration.annee} avant le 20 de ce mois."
+        )
         
     db_declaration.statut = StatutDeclaration.soumise
-    
     db.commit()
     db.refresh(db_declaration)
     return db_declaration
 
-# ── 4. REVIEW DÉCLARATION (ADMIN / COORDO) ──────────────────────────────────
+# ── 4. REVIEW DÉCLARATION (ADMIN / COORDO / TOP_COM) ───────────────────────
 @router.post("/{declaration_id}/review", response_model=DeclarationOut)
 def review_declaration(
     declaration_id: int, 
     review_in: DeclarationReview, 
     db: Session = Depends(get_db),
-    # 🛡️ Bloque l'accès si l'user n'est ni Admin ni Coordo
     current_user: User = Depends(check_peut_valider_declaration) 
 ):
     db_declaration = db.query(Declaration).filter(Declaration.id == declaration_id).first()
@@ -165,24 +231,40 @@ def review_declaration(
     if not db_declaration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Déclaration introuvable.")
         
-    if db_declaration.statut != StatutDeclaration.soumise:
+    # 👑 RÈGLE 5 : Super Pouvoir Admin (peut réouvrir même si validé)
+    # Les autres (coordo, top_com) ne peuvent traiter QUE du "soumise"
+    if current_user.role != Role.admin and db_declaration.statut != StatutDeclaration.soumise:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Seules les déclarations au statut 'soumise' peuvent être validées ou refusées."
+            detail="Seules les déclarations au statut 'soumise' peuvent être traitées."
+        )
+    
+    # On évite qu'un Admin tente de traiter une déclaration qui est encore un brouillon non fini
+    if current_user.role == Role.admin and db_declaration.statut == StatutDeclaration.brouillon:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossible de traiter une déclaration qui est encore au stade de brouillon chez l'utilisateur."
         )
 
     auteur = db_declaration.user
 
-    # 🔒 VERROU DE SITE : Le Coordo ne peut valider que sur son site
+    # 🔒 VERROU DE PÉRIMÈTRE
     if current_user.role == Role.coordo:
         if auteur.site != current_user.site:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Un Coordinateur ne peut valider que les déclarations des utilisateurs de son site."
+                detail="Un Coordinateur ne peut traiter que les déclarations de son site."
+            )
+            
+    elif current_user.role == Role.top_com:
+        if auteur.site != current_user.site or auteur.role != Role.com:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Un Top Com ne peut traiter que les déclarations des COM de son site."
             )
 
     # 📝 TRAITEMENT
-    if review_in.statut == StatutDeclaration.brouillon:
+    if review_in.statut == StatutDeclaration.brouillon: # Action de rejet
         if not review_in.commentaire_refus or len(review_in.commentaire_refus.strip()) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -213,7 +295,7 @@ def get_declarations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(Declaration)
+    query = db.query(Declaration).options(joinedload(Declaration.user))
 
     # 🛡️ 1. L'Admin voit TOUT
     if current_user.role == Role.admin:
@@ -241,7 +323,7 @@ def get_declarations(
         )
 
     # 🛡️ 4. Le TOP COM (Voit les siennes + les COM de son site)
-    elif current_user.role == Role.top_com:  # Adapte le nom de l'enum si c'est different !
+    elif current_user.role == Role.top_com:
         query = query.join(User, Declaration.user_id == User.id).filter(
             or_(
                 Declaration.user_id == current_user.id,

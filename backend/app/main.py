@@ -21,9 +21,13 @@ setup_logging()
 logger = structlog.get_logger()
 
 app = FastAPI(
-    title="Avicenne Pay API",
+    title="Avicenne Pay API",    
     # 🛡️ 2. Déclaration du schéma de sécurité directement dans l'app
-    swagger_ui_parameters={"persistAuthorization": True}, # Garde le token même si on actualise la page !
+    sswagger_ui_parameters={
+        "persistAuthorization": True,
+        "operationsSorter": "alpha",
+        "tagsSorter": "alpha"
+    },
     openapi_components={
         "securitySchemes": {
             "BearerAuth": {
@@ -68,12 +72,14 @@ app.add_middleware(
     allow_headers=["*"], # Autorise tous les headers
 )
 
-# 🚦 3. AJOUT DU ROUTEUR USERS
-app.include_router(user.router) # 👈 Ajouté ici !
-app.include_router(missions.router) 
-app.include_router(auth.router)
-app.include_router(declarations.router)
-app.include_router(paie.router)
+# 🚦 3. AJOUT DES ROUTEURS (Avec versioning d'API)
+# On applique le préfixe '/api/v1' pour éviter de casser les futures versions
+
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(user.router, prefix="/api/v1")
+app.include_router(missions.router, prefix="/api/v1")
+app.include_router(declarations.router, prefix="/api/v1")
+app.include_router(paie.router, prefix="/api/v1")
 
 @app.get("/", tags=["Root"]) # Un petit tag pour faire joli dans Swagger
 def read_root():

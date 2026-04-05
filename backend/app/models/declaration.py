@@ -1,13 +1,17 @@
 # backend/app/models/declaration.py
 
+from __future__ import annotations
 import enum
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import String, Enum as SAEnum, DateTime, func, ForeignKey, Integer, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 from app.models.user import User
-from app.models.mission import Mission
+
+if TYPE_CHECKING:
+    # Cet import ne s'exécute QUE pour ton éditeur VS Code (Pylance) !
+    from app.models.mission import Mission
 
 # ── 1. ENUMS POUR LES STATUTS ──────────────────────────────────────────────
 

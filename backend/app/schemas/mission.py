@@ -1,54 +1,45 @@
 # backend/app/schemas/mission.py
 
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, Field
+# On importe l'Enum depuis le dossier models pour garder une source unique de vérité !
 from app.models.mission import TypeContratMission
 
-# Base commune
+# ─── SCHÉMA DE BASE (Partagé) ──────────────────────────────────────────
 class MissionBase(BaseModel):
-    categorie: str
-    titre: str
+    categorie: str = Field(..., min_length=2, max_length=255, description="Ex: ✍️ Rédiger et mettre en page...")
+    titre: str = Field(..., min_length=2, max_length=255, description="Ex: LVL 1 - Pas ou peu de changements")
     type_contrat: TypeContratMission = TypeContratMission.ccda
-    tarif_unitaire: float = Field(..., gt=0)
-    unite: str
-    is_resp_only: bool = False
+    tarif_unitaire: float = Field(..., ge=0, description="Le tarif ne peut pas être négatif")
+    unite: str = Field(..., min_length=1, max_length=100, description="Ex: par qcm")
+    
+    # Tes deux toggles bien explicites !
+    dispo_resp: bool = Field(True, description="Accessible aux Responsables (RESP)")
+    dispo_tcp: bool = Field(True, description="Accessible aux Tuteurs/Trices (TCP)")
+    
     is_active: bool = True
 
-# Pour la création (Admin)
+# ─── SCHÉMA POUR LA CRÉATION (Input API) ────────────────────────────────
 class MissionCreate(MissionBase):
     pass
 
-# Pour la mise à jour (Admin)
+# ─── SCHÉMA POUR LA MISE À JOUR (Input API) ────────────────────────────
 class MissionUpdate(BaseModel):
     categorie: Optional[str] = None
     titre: Optional[str] = None
     type_contrat: Optional[TypeContratMission] = None
-    tarif_unitaire: Optional[float] = Field(None, gt=0)
+    tarif_unitaire: Optional[float] = None
     unite: Optional[str] = None
-    is_resp_only: Optional[bool] = None
+    dispo_resp: Optional[bool] = None
+    dispo_tcp: Optional[bool] = None
     is_active: Optional[bool] = None
 
-# Ce que l'API renvoie
-class MissionOut(MissionBase):
+# ─── SCHÉMA POUR LA RÉPONSE (Output API) ───────────────────────────────
+class MissionResponse(MissionBase):
     id: int
     created_at: datetime
     updated_at: datetime
 
-    # backend/app/schemas/ligne_declaration.py
-
-from pydantic import BaseModel, computed_field, ConfigDict
-
-class LigneDeclarationOut(BaseModel):
-    id: int
-    declaration_id: int
-    mission_id: int
-    quantite: float
-    tarif_applique: float
-
-    # 💡 Pydantic v2 calcule automatiquement ce champ à la volée !
-    @computed_field
-    def sous_total(self) -> float:
-        return round(self.quantite * self.tarif_applique, 2)
-
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

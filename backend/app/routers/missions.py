@@ -6,31 +6,39 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import Role, User
 from app.models.mission import Mission, TypeContratMission
-from app.schemas.mission import MissionCreate, MissionUpdate, MissionOut
+from app.schemas.mission import MissionCreate, MissionUpdate, MissionResponse 
 from app.core.security import get_current_user, check_is_at_least_coordo
 
 router = APIRouter(prefix="/missions", tags=["Missions"])
 
-# 🔓 LECTURE : Filtrée selon le rôle (on garde la logique précédente)
-@router.get("/", response_model=List[MissionOut])
+# 🔓 LECTURE : Filtrée selon le rôle
+@router.get("/", response_model=List[MissionResponse])
 def get_missions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     query = db.query(Mission).filter(Mission.is_active == True)
     
-    # Si l'utilisateur n'est NI admin NI resp, on lui cache les missions réservées aux responsables
-    if current_user.role not in [Role.admin, Role.resp]:
-        query = query.filter(Mission.is_resp_only == False)
+    # 🎯 RÈGLE DES TOGGLES : 
+    # Si l'utilisateur n'est pas Admin, on applique le ciblage des rôles
+    if current_user.role != Role.admin:
+        if current_user.role == Role.resp:
+            query = query.filter(Mission.dispo_resp == True)
+        elif current_user.role == Role.tcp:
+            query = query.filter(Mission.dispo_tcp == True)
+        # 💡 Optionnel : Restreindre l'accès par défaut pour les rôles non gérés (ex: coordo, com...)
+        # else:
+        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès non autorisé.")
         
-    return query.all()
+    return query.order_by(Mission.categorie.asc(), Mission.id.asc()).all()
 
 
 # 🔒 CRÉATION : Réservée aux Admins (Tout) et Coordos (Uniquement CCDA)
-@router.post("/", response_model=MissionOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=MissionResponse, status_code=status.HTTP_201_CREATED)
 def create_mission(
     mission_in: MissionCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_is_at_least_coordo) # 🛡️ Plus besoin de if sur le rôle ici
+    current_user: User = Depends(check_is_at_least_coordo) 
 ):
-    if current_user.role == Role.coordo and mission_in.type_contrat != TypeContratMission.ccda:
+    # 🛡️ Blindage avec .value pour éviter les conflits d'Enum
+    if current_user.role == Role.coordo and mission_in.type_contrat != TypeContratMission.ccda.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="En tant que Coordinateur, vous ne pouvez créer que des missions de type CCDA."
@@ -42,27 +50,29 @@ def create_mission(
     db.refresh(new_mission)
     return new_mission
 
+
 # 🔒 MODIFICATION / TOGGLE : Réservée aux Admins (Tout) et Coordos (Uniquement CCDA)
-@router.put("/{mission_id}", response_model=MissionOut)
+@router.put("/{mission_id}", response_model=MissionResponse)
 def update_mission(
     mission_id: int,
     mission_in: MissionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_is_at_least_coordo) # 🛡️ Idem !
+    current_user: User = Depends(check_is_at_least_coordo) 
 ):
     db_mission = db.query(Mission).filter(Mission.id == mission_id).first()
     if not db_mission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mission introuvable.")
         
     if current_user.role == Role.coordo:
-        # On l'empêche de toucher à une mission qui n'est pas CCDA
-        if db_mission.type_contrat != TypeContratMission.ccda:
+        # 🛡️ Blindage .value ici aussi
+        if db_mission.type_contrat != TypeContratMission.ccda.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="En tant que Coordinateur, vous ne pouvez pas modifier une mission qui n'est pas CCDA."
             )
-        # On l'empêche de transformer une CCDA en autre chose
-        if mission_in.type_contrat and mission_in.type_contrat != TypeContratMission.ccda:
+            
+        # 🛡️ Et ici aussi !
+        if mission_in.type_contrat and mission_in.type_contrat != TypeContratMission.ccda.value:
              raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Vous ne pouvez pas basculer une mission CCDA vers un autre type de contrat."
@@ -77,25 +87,40 @@ def update_mission(
     return db_mission
 
 
-@router.delete("/{mission_id}", response_model=MissionOut) # 💡 On renvoie la mission modifiée !
+# 🔒 SUPPRESSION VIRTUELLE : Réservée aux Admins (Tout) et Coordos (Uniquement CCDA)
+@router.delete("/{mission_id}", response_model=MissionResponse)
 def delete_mission(
     mission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_is_at_least_coordo) # 🛡️ Idem !
+    current_user: User = Depends(check_is_at_least_coordo) 
 ):
     db_mission = db.query(Mission).filter(Mission.id == mission_id).first()
     if not db_mission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mission introuvable.")
         
-    if current_user.role == Role.coordo and db_mission.type_contrat != TypeContratMission.ccda:
+    # 🛡️ Blindage .value final
+    if current_user.role == Role.coordo and db_mission.type_contrat != TypeContratMission.ccda.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="En tant que Coordinateur, vous ne pouvez désactiver que des missions de type CCDA."
         )
         
-    # 💥 On ne supprime pas, on désactive !
     db_mission.is_active = False
     
     db.commit()
     db.refresh(db_mission)
     return db_mission
+
+@router.delete("/{mission_id}/definitive")
+def delete_mission_definitive(
+    mission_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_is_at_least_coordo) 
+):
+    db_mission = db.query(Mission).filter(Mission.id == mission_id).first()
+    if not db_mission:
+        raise HTTPException(status_code=404, detail="Mission introuvable.")
+        
+    db.delete(db_mission) # 💥 Suppression réelle
+    db.commit()
+    return {"message": "Mission supprimée définitivement"}

@@ -1,31 +1,51 @@
 # -*- coding: utf-8 -*-
-# app/models/referentiels.py
-import enum 
+# backend/seed_catalog_ccda.py
 
-# ── 1. LE RÉFÉRENTIEL DES MATIÈRES ───────────────────────────────────────
-MATIERES = {
-    "PASS": [
-        "UE_1", "UE_2", "UE_3", "UE_4", "UE_5", "UE_6", "UE_7", "UE_8",
-        "MMOK", "PHARMA",
-        "Min SVE", "Min SVH", "Min SPS", "Min EEEA",
-        "Min PHY_MECA", "Min MATH", "Min CHIMIE", "Min STAPS",
-        "Min DROIT", "ORAUX",
-    ],
-    "LAS 1": [
-        "Physiologie", "Anatomie", "Biologie Cell", "Biochimie",
-        "Biostats", "Biophysique", "Chimie", "SSH",
-        "Santé Publique", "ICM", "HBDV",
-    ],
-    "LAS 2": [
-        "Microbiologie", "Biocell / Immuno", "Biologie Dev",
-        "Enzymo / Métabo", "Génétique", "Physiologie",
-        "Statistiques", "MES GSE",
-    ],
-}
+import os
+import sys
+import enum
+from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import String, Float, Enum as SAEnum, Boolean, DateTime, func, text
+from sqlalchemy.orm import Mapped, mapped_column
 
-# ── 2. LES MISSIONS INITIALES ET TARIFS ──────────────────────────────────
+# On s'assure que Python trouve le dossier 'app'
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.database import SessionLocal, Base, engine # 👈 Ajout de engine ici
+
+# ─── 1. ON REDÉFINIT LES MODÈLES ICI POUR ÉVITER LES ERREURS D'IMPORT ───
+class TypeContratMission(str, enum.Enum):
+    cddu = "CDDU"   
+    ccda = "CCDA"
+    both = "BOTH"
+
+class Mission(Base):
+    __tablename__ = "missions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    categorie: Mapped[str] = mapped_column(String(255), nullable=False)
+    titre: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    type_contrat: Mapped[TypeContratMission] = mapped_column(
+        SAEnum(TypeContratMission, native_enum=False), 
+        default=TypeContratMission.ccda,
+        nullable=False
+    )
+    
+    tarif_unitaire: Mapped[float] = mapped_column(Float, nullable=False)
+    unite: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    dispo_resp: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    dispo_tcp: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+# ─── 2. LE DICTIONNAIRE INITIAL CCDA ──────────────────────────────────
 MISSIONS_INITIALES = {
-    # --- 1. CRÉATION ET RÉDACTION ---
     "✍️ Rédiger et mettre en page les supports de cours": [
         {"titre": "LVL 1 - Pas ou peu de changements : MAP finale d'1 page de texte max (hors schéma)", "tarif": 10.0, "unite": "par map / support"},
         {"titre": "LVL 2 - Changements moyens : MAP finale de 2 ou 3 pages (hors schéma)", "tarif": 25.0, "unite": "par map / support"},
@@ -46,8 +66,6 @@ MISSIONS_INITIALES = {
         {"titre": "Standard - QCM classique, images et/ou texte", "tarif": 0.5, "unite": "par qcm"},
         {"titre": "Complexe - QCM complexe, formules mathématiques (ex: UE3, UE6)", "tarif": 1.0, "unite": "par qcm"}
     ],
-
-    # --- 2. ANIMATION ET TRANSMISSION ---
     "👨‍🏫 Animation de séances": [
         {"titre": "Supports existants - ED, TD, Stage pré-rentrée, TDR – Préparation incluse", "tarif": 12.0, "unite": "par heure"},
         {"titre": "Supports à créer - ED, TD, Stage pré-rentrée, TDR – Préparation incluse", "tarif": 24.0, "unite": "par heure"}
@@ -58,8 +76,6 @@ MISSIONS_INITIALES = {
     "💬 Permanences et support": [
         {"titre": "Permanences - Questions/réponses PASS et LASS, y compris réponse au forum (séance de 2h)", "tarif": 10.0, "unite": "par heure"}
     ],
-
-    # --- 3. RELECTURE ET MAINTENANCE ---
     "📝 Relire/vérifier/corriger/mettre en page les supports": [
         {"titre": "LVL 1 - Pas ou peu de changements : MAP finale d'1 page de texte max (hors schéma)", "tarif": 3.0, "unite": "par support"},
         {"titre": "LVL 2 - Changements moyens : MAP finale de 2 ou 3 pages (hors schéma)", "tarif": 5.0, "unite": "par support"},
@@ -76,8 +92,6 @@ MISSIONS_INITIALES = {
         {"titre": "LVL 2 - Questions intermédiaire (énoncé long ou schéma à légender)", "tarif": 2.0, "unite": "par qcm"},
         {"titre": "LVL 3 - Questions d'exercice", "tarif": 3.0, "unite": "par qcm"}
     ],
-
-    # --- 4. GESTION ET FORMATION ---
     "👔 Participation réunions pré-colles": [
         {"titre": "Participation - Réunions pré-colles", "tarif": 10.0, "unite": "par pré-colle"}
     ],
@@ -87,58 +101,63 @@ MISSIONS_INITIALES = {
     "🎓 Formation": [
         {"titre": "Formation - Réunion de formation (Word, Teams, …)", "tarif": 50.0, "unite": "par jour"}
     ],
-
-    # --- 5. SAISONNIER ---
     "☀️ Mise à jour estivale": [
         {"titre": "Mise à jour estivale - Réintégrer les MAPS n-1, Relire les cours, Post-it et fiches, Relecture ED & entraînements", "tarif": 300.0, "unite": "par semaine"}
     ]
 }
 
-# ── 3. LES UNITÉS DISPONIBLES ───────────────────────────────────────────
-UNITES_CHOICES = [
-    # --- TEMPS ---
-    "par heure",
-    "par jour",
-    "par mois",
-    "par séance",
-    
-    # --- VOLUME / RÉDACTION ---
-    "par qcm",
-    "par annale et par année",
-    "par post-it",
-    "par support / map",
-    
-    # --- FORFAITAIRE ---
-    "forfait mise à jour estivale",
-    "par pré-colle"
-]
+# ─── 3. LA FONCTION DE SEED ───────────────────────────────────────────
+def seed_catalog():
+    db: Session = SessionLocal()
+    try:
+        print("🛠️ Harmonisation de la structure de la table...")
+        
+        # 1. On s'assure que nos nouvelles colonnes sont bien là
+        db.execute(text("ALTER TABLE missions ADD COLUMN IF NOT EXISTS dispo_resp BOOLEAN DEFAULT TRUE;"))
+        db.execute(text("ALTER TABLE missions ADD COLUMN IF NOT EXISTS dispo_tcp BOOLEAN DEFAULT TRUE;"))
+        
+        # 2. 🔥 ON SUPPRIME LA COLONNE OBSOLÈTE ! Adieu "is_resp_only" ;)
+        db.execute(text("ALTER TABLE missions DROP COLUMN IF EXISTS is_resp_only;"))
+        db.commit()
+        
+        print("🌱 Début de l'injection du catalogue CCDA...")
+        
+        # On nettoie les anciennes missions CCDA
+        db.execute(text("DELETE FROM missions WHERE UPPER(categorie) LIKE '%CCDA%' OR titre LIKE '%CCDA%' OR type_contrat::text = 'ccda'"))
+        db.commit()
+        
+        # On revient à notre requête propre, sans le champ banni !
+        insert_query = text("""
+            INSERT INTO missions 
+            (categorie, titre, type_contrat, tarif_unitaire, unite, dispo_resp, dispo_tcp, is_active)
+            VALUES 
+            (:categorie, :titre, 'ccda', :tarif_unitaire, :unite, :dispo_resp, :dispo_tcp, :is_active)
+        """)
+        
+        count = 0
+        for nom_categorie, sous_missions in MISSIONS_INITIALES.items():
+            for sm in sous_missions:
+                est_gestion_equipe = "Gestion d'équipe" in nom_categorie
+                
+                db.execute(insert_query, {
+                    "categorie": nom_categorie,
+                    "titre": sm["titre"],
+                    "tarif_unitaire": sm["tarif"],
+                    "unite": sm["unite"],
+                    "dispo_resp": True,
+                    "dispo_tcp": not est_gestion_equipe,
+                    "is_active": True
+                })
+                count += 1
+        
+        db.commit()
+        print(f"🚀 Succès ! {count} missions CCDA ont été injectées. Table nettoyée !")
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Erreur lors de l'injection : {e}")
+    finally:
+        db.close()
 
-class Role(str, enum.Enum):
-    admin   = "admin"
-    coordo  = "coordo"
-    resp    = "resp"
-    tcp     = "tcp"
-    top     = "top"
-    top_com = "top_com"
-    com     = "com"
-
-class Filiere(str, enum.Enum):
-    medecine       = "Médecine"
-    pharmacie      = "Pharmacie"
-    maieutique     = "Maïeutique"
-    odontologie    = "Odontologie"
-    kinesitherapie = "Kinésithérapie"
-
-class Annee(str, enum.Enum):
-    p2 = "P2"
-    d1 = "D1"
-    d2 = "D2"
-    d3 = "D3"
-
-class Site(str, enum.Enum):
-    lyon_est = "Lyon Est"
-    lyon_sud = "Lyon Sud"
-
-class TypeContrat(str, enum.Enum):
-    ccda = "CCDA"
-    cddu = "CDDU"
+if __name__ == "__main__":
+    seed_catalog()
