@@ -17,7 +17,7 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: DashboardView, // 🟢 Utilise bien notre DashboardView !
+      component: DashboardView,
       meta: { requiresAuth: true }  
     },
     {
@@ -29,7 +29,7 @@ const router = createRouter({
     {
       path: '/declarations',
       name: 'declarations',
-      component: () => import('../views/HomeView.vue'), // À remplacer par ta vraie vue plus tard !
+      component: () => import('../views/DeclarationsView.vue'), 
       meta: { requiresAuth: true }
     },
     {
@@ -38,18 +38,25 @@ const router = createRouter({
       component: () => import('../views/UtilisateursView.vue'),
       meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo', 'resp', 'top_com'] }
     },
+    
+    // 🎯 STRATÉGIE B : Une seule route pour les deux catalogues !
     {
-      path: '/catalogue-ccda',
-      name: 'catalogue-ccda',
-      component: () => import('../views/HomeView.vue'),
-      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] }
+      path: '/missions/:type',
+      name: 'catalogue-missions',
+      component: () => import('../views/MissionsCatalogueView.vue'),
+      props: true,
+      meta: { requiresAuth: true }, // Tout le monde peut voir les catalogues (les rôles sont gérés par ton back !)
+      beforeEnter: (to, from, next) => {
+        // Petite sécurité supplémentaire pour éviter qu'un malin tape /missions/nimportequoi dans l'URL
+        const typeDemande = to.params.type.toLowerCase();
+        if (['ccda', 'cddu'].includes(typeDemande)) {
+          next();
+        } else {
+          next({ name: 'dashboard' }); // On redirige si le type de contrat n'existe pas
+        }
+      }
     },
-    {
-      path: '/catalogue-ccdu',
-      name: 'catalogue-ccdu',
-      component: () => import('../views/HomeView.vue'),
-      meta: { requiresAuth: true, rolesAutorises: ['admin'] }
-    },
+
     {
       path: '/pilotage',
       name: 'pilotage',
@@ -86,16 +93,16 @@ router.beforeEach((to, from) => {
 
   // 🚪 Règle 1 : Si la page demande à être connecté et qu'on n'a pas de token -> Direction Login
   if (to.meta.requiresAuth && !token) {
-    return { name: 'login' } // 🟢 Méthode moderne sans next() !
+    return { name: 'login' } 
   } 
   
   // ⛔ Règle 2 : Si la page demande des rôles spécifiques et que l'utilisateur n'a pas le bon
   if (to.meta.rolesAutorises && !to.meta.rolesAutorises.includes(userRole)) {
     alert("Accès interdit : Vous n'avez pas les droits nécessaires.")
-    return { name: 'dashboard' } // 🟢 On le renvoie vers le dashboard plutôt que 'home' qui n'existe pas
+    return { name: 'dashboard' } 
   } 
 
-  // 🟢 Règle 3 : Tout est OK, on laisse passer (pas besoin de retourner quoi que ce soit)
+  // 🟢 Règle 3 : Tout est OK, on laisse passer
 })
 
 export default router

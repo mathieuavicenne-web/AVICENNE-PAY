@@ -1,7 +1,64 @@
+<template>
+  <div class="container mt-4">
+    
+    <div v-if="$route.name === 'login'">
+      <RouterView />
+    </div>
+
+    <div v-else>
+      <nav class="navbar navbar-expand-lg shadow-sm mb-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-3">
+          
+          <div class="d-flex align-items-center gap-2">
+            <span class="navbar-brand mb-0" style="color: var(--primary-color);">
+              Avicenne Pay
+            </span>
+            <span v-if="estConnecte" class="text-muted small me-2">{{ prenomUtilisateur }} &nbsp;</span>
+            <span v-if="estConnecte" class="badge bg-secondary text-uppercase" style="font-size: 0.75rem;">{{ userRole }}</span>
+          </div>
+
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <RouterLink to="/dashboard" class="hover-primary text-decoration-none fw-bold">Tableau de bord</RouterLink>
+            <RouterLink to="/profil" class="hover-primary text-decoration-none fw-bold">Mon profil</RouterLink>
+            <RouterLink to="/declarations" class="hover-primary text-decoration-none fw-bold">Déclarations</RouterLink>
+
+            <RouterLink v-if="peutVoirGestionUtilisateurs" to="/utilisateurs" class="hover-primary text-decoration-none fw-bold">Utilisateurs</RouterLink>
+            
+            <RouterLink v-if="peutVoirCcda" to="/missions/ccda" class="hover-primary text-decoration-none fw-bold">Catalogue CCDA</RouterLink>
+            <RouterLink v-if="peutVoirCcdu" to="/missions/cddu" class="hover-primary text-decoration-none fw-bold">Catalogue CCDU</RouterLink>
+            
+            <RouterLink v-if="peutVoirPilotageEtPaie" to="/pilotage" class="hover-primary text-decoration-none fw-bold">Pilotage</RouterLink>
+            <RouterLink v-if="peutVoirPilotageEtPaie" to="/synthese-paie" class="hover-primary text-decoration-none fw-bold">Synthèse Paie</RouterLink>
+
+            <button class="btn btn-sm btn-outline-danger fw-bold ms-2" @click="seDeconnecter">Déconnexion</button>
+          </div>
+        </div>
+      </nav>
+
+      <main class="container text-center mt-5">
+        
+        <button @click="appelerLeBackend" class="btn btn-warning p-3 mb-4">
+          Tester la connexion avec Python 🐍
+        </button>
+
+        <div v-if="reponsePython" class="alert alert-info mt-3 shadow-sm mx-auto" style="max-width: 500px;">
+          <strong>Réponse du serveur :</strong> {{ reponsePython }}
+        </div>
+
+        <div class="mt-5">
+          <RouterView />
+        </div>
+      </main>
+    </div>
+
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { authService } from '@/services/api' 
+import api from '@/services/api' // 👈 Import de l'instance API pour uniformiser le test Python
 import './assets/main.css'
 
 const router = useRouter()
@@ -44,12 +101,12 @@ onMounted(() => {
   chargerProfil()
 })
 
-// --- Fonction de test Python d'origine ---
+// --- Fonction de test Python modifiée pour utiliser Axios et le préfixe ---
 async function appelerLeBackend() {
   try {
-    const response = await fetch('http://localhost:8000/') 
-    const data = await response.json()
-    reponsePython.value = data.message || data
+    // Taper sur / donne le message de bienvenue avec notre base URL (axios ajoute le port 8000 et /api/v1)
+    const response = await api.get('/') 
+    reponsePython.value = response.data.message || response.data
   } catch (error) {
     reponsePython.value = "Erreur de connexion : " + error.message
   }
@@ -70,60 +127,6 @@ const peutVoirCcda = computed(() => ['admin', 'coordo'].includes(userRole.value)
 const peutVoirCcdu = computed(() => userRole.value === 'admin')
 const peutVoirPilotageEtPaie = computed(() => userRole.value === 'admin')
 </script>
-
-<template>
-  <div class="container mt-4">
-    
-    <div v-if="$route.name === 'login'">
-      <RouterView />
-    </div>
-
-    <div v-else>
-      <nav class="navbar navbar-expand-lg shadow-sm mb-4">
-        <div class="container-fluid d-flex justify-content-between align-items-center p-3">
-          
-          <div class="d-flex align-items-center gap-2">
-            <span class="navbar-brand mb-0" style="color: var(--primary-color);">
-              Avicenne Pay
-            </span>
-            <span v-if="estConnecte" class="text-muted small me-2">{{ prenomUtilisateur }} &nbsp;</span>
-            <span v-if="estConnecte" class="badge bg-secondary text-uppercase" style="font-size: 0.75rem;">{{ userRole }}</span>
-          </div>
-
-          <div class="d-flex gap-2 align-items-center flex-wrap">
-            <RouterLink to="/dashboard" class="hover-primary text-decoration-none fw-bold">Tableau de bord</RouterLink>
-            <RouterLink to="/profil" class="hover-primary text-decoration-none fw-bold">Mon profil</RouterLink>
-            <RouterLink to="/declarations" class="hover-primary text-decoration-none fw-bold">Déclarations</RouterLink>
-
-            <RouterLink v-if="peutVoirGestionUtilisateurs" to="/utilisateurs" class="hover-primary text-decoration-none fw-bold">Utilisateurs</RouterLink>
-            <RouterLink v-if="peutVoirCcda" to="/catalogue-ccda" class="hover-primary text-decoration-none fw-bold">Catalogue CCDA</RouterLink>
-            <RouterLink v-if="peutVoirCcdu" to="/catalogue-ccdu" class="hover-primary text-decoration-none fw-bold">Catalogue CCDU</RouterLink>
-            <RouterLink v-if="peutVoirPilotageEtPaie" to="/pilotage" class="hover-primary text-decoration-none fw-bold">Pilotage</RouterLink>
-            <RouterLink v-if="peutVoirPilotageEtPaie" to="/synthese-paie" class="hover-primary text-decoration-none fw-bold">Synthèse Paie</RouterLink>
-
-            <button class="btn btn-sm btn-outline-danger fw-bold ms-2" @click="seDeconnecter">Déconnexion</button>
-          </div>
-        </div>
-      </nav>
-
-      <main class="container text-center mt-5">
-        
-        <button @click="appelerLeBackend" class="btn btn-warning p-3 mb-4">
-          Tester la connexion avec Python 🐍
-        </button>
-
-        <div v-if="reponsePython" class="alert alert-info mt-3 shadow-sm mx-auto" style="max-width: 500px;">
-          <strong>Réponse du serveur :</strong> {{ reponsePython }}
-        </div>
-
-        <div class="mt-5">
-          <RouterView />
-        </div>
-      </main>
-    </div>
-
-  </div>
-</template>
 
 <style scoped>
 nav a.router-link-exact-active {

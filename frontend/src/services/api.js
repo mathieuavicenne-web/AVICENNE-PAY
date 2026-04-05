@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // 1. On crée l'instance Axios configurée
 const api = axios.create({
-  baseURL: 'http://localhost:8000', 
+  baseURL: 'http://localhost:8000/api/v1',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -144,6 +144,139 @@ export const userService = {
         throw new Error(error.response.data.detail)
       }
       throw new Error("Impossible de mettre à jour l'utilisateur.")
+    }
+  }
+}
+
+// 6. Fonctions de gestion des missions
+export const missionService = {
+  // 1. Lire toutes les missions
+  async getAllMissions() {
+    try {
+      const response = await api.get('/missions/')
+      return response.data
+    } catch (error) {
+      console.error("Impossible de récupérer les missions :", error)
+      throw error
+    }
+  },
+
+  // 2. Créer une mission
+  async createMission(missionData) {
+    try {
+      const response = await api.post('/missions/', missionData)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la création de la mission")
+    }
+  },
+
+  // 3. Modifier une mission
+  async updateMission(missionId, missionData) {
+    try {
+      const response = await api.put(`/missions/${missionId}`, missionData)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la mise à jour de la mission")
+    }
+  },
+
+  // 4. Désactiver une mission (Delete logique)
+  async deleteMission(missionId) {
+    try {
+      const response = await api.delete(`/missions/${missionId}`)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la désactivation de la mission")
+    }
+  },
+
+  // 🆕 5. Supprimer DÉFINITIVEMENT une mission de la base
+  async deleteMissionDefinitive(missionId) {
+    try {
+      // Regarde bien le template string ici avec `/definitive` à la fin !
+      const response = await api.delete(`/missions/${missionId}/definitive`)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la suppression définitive de la mission")
+    }
+  }
+}
+
+// 7. Fonctions de gestion des déclarations
+export const declarationService = {
+  // 1. Récupérer toutes les déclarations accessibles par l'utilisateur
+  async getAllDeclarations() {
+    try {
+      const response = await api.get('/declarations/')
+      return response.data
+    } catch (error) {
+      console.error("Impossible de récupérer les déclarations :", error)
+      throw error
+    }
+  },
+
+  // 2. Créer une nouvelle déclaration (Brouillon)
+  async createDeclaration(declarationData) {
+    try {
+      const response = await api.post('/declarations/', declarationData)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la création de la déclaration")
+    }
+  },
+
+  // 3. Modifier une déclaration existante (uniquement si elle est en brouillon)
+  async updateDeclaration(id, declarationData) {
+    try {
+      const response = await api.put(`/declarations/${id}`, declarationData)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la mise à jour")
+    }
+  },
+
+  // 4. Soumettre une déclaration (passe de brouillon à soumise)
+  async soumettreDeclaration(id) {
+    try {
+      const response = await api.post(`/declarations/${id}/soumettre`)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de la soumission")
+    }
+  },
+
+  // 5. Valider ou Refuser (Review) une déclaration (Admin / Coordo)
+  async reviewDeclaration(id, reviewData) {
+    try {
+      const response = await api.post(`/declarations/${id}/review`, reviewData)
+      return response.data
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail)
+      }
+      throw new Error("Erreur lors de l'évaluation de la déclaration")
     }
   }
 }
