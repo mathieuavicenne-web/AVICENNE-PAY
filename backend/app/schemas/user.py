@@ -93,8 +93,11 @@ class UserOut(UserBase):
     programme: Optional[str] = None
     matiere: Optional[str] = None
     profil_complete: bool
-    
     type_contrat: Optional[TypeContrat] = None 
+    
+    # 🔒 On ajoute ces deux lignes pour rassurer le Front-end !
+    nss: Optional[str] = None
+    iban: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

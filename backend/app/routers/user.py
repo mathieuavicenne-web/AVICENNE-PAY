@@ -26,25 +26,24 @@ router = APIRouter(prefix="/users", tags=["Gestion des Utilisateurs"])
 
 @router.get("/me", response_model=UserOut)
 def get_my_profile(current_user: User = Depends(get_current_user)):
-    """Récupère les infos de l'utilisateur connecté avec IBAN/NSS déchiffrés."""
+    """Récupère les infos de l'utilisateur connecté avec IBAN/NSS masqués."""
     user_data = current_user
     
-    # 🛡️ Sécurisation : on ne déchiffre que si la donnée existe !
     user_data.nss = decrypt_data(current_user.nss_encrypted) if current_user.nss_encrypted else None
     user_data.iban = decrypt_data(current_user.iban_encrypted) if current_user.iban_encrypted else None
     
     return user_data
 
-@router.put("/me", response_model=UserOut)
+@router.patch("/me", response_model=UserOut)
 def update_my_profile(
-    profile_data: UserProfileUpdate,  # 👈 Utilisation de ton nouveau schéma validé !
+    profile_data: UserProfileUpdate,  # 👈 Ton schéma validé
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Permet à l'utilisateur de mettre à jour ses propres infos (NSS, IBAN, adresse...)"""
     update_data = profile_data.model_dump(exclude_unset=True)
     
-    # 🔒 Traitement spécifique pour les données sensibles à chiffrer
+    # 🔒 1. Traitement spécifique pour les données sensibles à chiffrer
     if "nss" in update_data:
         nss_clair = update_data.pop("nss")
         update_data["nss_encrypted"] = encrypt_data(nss_clair) if nss_clair else None
@@ -53,14 +52,27 @@ def update_my_profile(
         iban_clair = update_data.pop("iban")
         update_data["iban_encrypted"] = encrypt_data(iban_clair) if iban_clair else None
 
-    # Sauvegarde du reste des infos
+    # 💾 2. Sauvegarde du reste des infos
     for key, value in update_data.items():
         setattr(current_user, key, value)
+        
+    # 💥 3. NOUVELLE RÈGLE MÉTIER : On vérifie si le profil est complet
+    # Pour pouvoir saisir une déclaration, ces 5 champs sont impératifs
+    champs_obligatoires = [
+        current_user.adresse, 
+        current_user.code_postal, 
+        current_user.ville, 
+        current_user.nss_encrypted, # On teste la présence de la donnée chiffrée
+        current_user.iban_encrypted # On teste la présence de la donnée chiffrée
+    ]
+    
+    # .profil_complete passe à True si TOUS les éléments de la liste existent (bool(x) == True)
+    current_user.profil_complete = all(bool(champ) for champ in champs_obligatoires)
         
     db.commit()
     db.refresh(current_user)
     
-    # On repasse les données en clair pour la réponse du frontend
+    # 🔓 4. On repasse les données en clair pour la réponse du frontend
     current_user.nss = decrypt_data(current_user.nss_encrypted) if current_user.nss_encrypted else None
     current_user.iban = decrypt_data(current_user.iban_encrypted) if current_user.iban_encrypted else None
     
