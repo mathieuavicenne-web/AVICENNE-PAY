@@ -1,12 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { declarationService } from '@/services/api'
-import { missionService } from '@/services/api'
+import { declarationService, missionService, authService } from '@/services/api'
 
 // --- ÉTATS ---
 const declarations = ref([])
 const catalogueMissions = ref([])
 const loading = ref(true)
+const profilComplet = ref(true)
 
 // Extraction des données de l'utilisateur depuis le Token
 const token = localStorage.getItem('token')
@@ -37,6 +37,10 @@ const declarationEnCours = ref({
   mois: new Date().getMonth() + 1,
   annee: new Date().getFullYear(),
   lignes: []
+})
+
+const canCreerSaisie = computed(() => {
+  return canCreate.value && profilComplet.value
 })
 
 // --- ÉTATS POUR LA RECHERCHE ET LE TRI ---
@@ -134,14 +138,29 @@ const declarationsFiltreesEtTriees = computed(() => {
 const chargerDonnees = async () => {
   loading.value = true
   try {
-    const [mesDeclarations, toutesLesMissions] = await Promise.all([
+    const [mesDeclarations, toutesLesMissions, monProfil] = await Promise.all([
       declarationService.getAllDeclarations(),
-      missionService.getAllMissions()
+      missionService.getAllMissions(),
+      authService.getUserProfile() // 🔥 On utilise le bon service ici !
     ])
     
     declarations.value = mesDeclarations
     catalogueMissions.value = toutesLesMissions
-    // 🔍 AJOUTE CETTE LIGNE ICI :
+    
+    // 🚨 VÉRIFICATION DU PROFIL COMPLET
+    if (monProfil) {
+      const p = monProfil
+      profilComplet.value = !!(
+        p.email && 
+        p.telephone && 
+        p.adresse && 
+        p.code_postal && 
+        p.ville && 
+        p.nss &&
+        p.iban
+      )
+    }
+    
     console.log("Mes déclarations reçues :", mesDeclarations)
   } catch (error) {
     console.error("Erreur lors du chargement :", error)

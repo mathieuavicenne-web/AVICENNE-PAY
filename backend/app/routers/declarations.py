@@ -30,6 +30,13 @@ def create_declaration(
             detail="Les administrateurs ne peuvent pas saisir de déclarations."
         )
 
+    # 🚨 RÈGLE 1bis : Profil complet obligatoire pour les déclarants
+    if not current_user.profil_complete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Votre profil est incomplet. Vous devez renseigner votre téléphone, adresse, code postal, ville, NSS et IBAN pour pouvoir soumettre une déclaration."
+        )
+
     # 🛑 RÈGLE 2 : Pas de doublon (1 déclaration max par mois et par utilisateur)
     existing_declaration = db.query(Declaration).filter(
         Declaration.user_id == current_user.id,

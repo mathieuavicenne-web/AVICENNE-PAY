@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 from app.models.declaration import StatutDeclaration
 
 # ── 1. SCHÉMAS POUR LES LIGNES ──────────────────────────────────────────────
@@ -17,14 +17,15 @@ class LigneDeclarationOut(BaseModel):
     quantite: float
     tarif_applique: float
 
-    @property
+    # 🔥 Pydantic v2 calcule automatiquement ce champ à la volée dans le JSON !
+    @computed_field
     def sous_total(self) -> float:
         return round(self.quantite * self.tarif_applique, 2)
 
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── 2. SCHÉMAS POUR L'UTILISATEUR (La solution à ton problème) ──────────────
+# ── 2. SCHÉMAS POUR L'UTILISATEUR ──────────────────────────────────────────
 
 class UserMinimalOut(BaseModel):
     prenom: Optional[str] = None
@@ -55,10 +56,12 @@ class DeclarationOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     lignes: List[LigneDeclarationOut]
-    total_remuneration: float 
-    
-    # 🎯 FastAPI va maintenant chercher l'objet User complet
     user: Optional[UserMinimalOut] = None
+
+    # 🔥 Calcul automatique de la rémunération totale de la déclaration !
+    @computed_field
+    def total_remuneration(self) -> float:
+        return round(sum(ligne.quantite * ligne.tarif_applique for ligne in self.lignes), 2)
 
     model_config = ConfigDict(from_attributes=True)
 

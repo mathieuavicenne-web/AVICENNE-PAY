@@ -416,7 +416,6 @@ def admin_reset_password(
     return {"message": f"Le mot de passe de {user_to_reset.email} a été réinitialisé avec succès."}
 
 # ── 👥 ROUTE REFERENTIELS ──
-
 @router.get("/constants/referentiels")
 def get_referentiels():
     """Renvoie les listes de sites, rôles et matières pour le frontend."""

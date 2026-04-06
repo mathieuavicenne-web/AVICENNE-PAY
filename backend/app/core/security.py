@@ -2,6 +2,7 @@
 
 import os
 from cryptography.fernet import Fernet
+from zoneinfo import ZoneInfo
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -147,3 +148,10 @@ def check_peut_valider_declaration(current_user: User = Depends(get_current_user
             detail="Seuls les Administrateurs et les Coordinateurs peuvent valider ou rejeter des déclarations."
         )
     return current_user
+
+def get_paris_now() -> datetime:
+    """
+    Retourne la date et l'heure actuelles basées sur le fuseau de Paris.
+    Permet d'éviter les bugs si le serveur est hébergé sur un fuseau UTC.
+    """
+    return datetime.now(ZoneInfo("Europe/Paris"))
