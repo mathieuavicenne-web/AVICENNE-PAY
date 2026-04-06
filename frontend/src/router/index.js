@@ -56,17 +56,16 @@ const router = createRouter({
         }
       }
     },
-
     {
       path: '/pilotage',
       name: 'pilotage',
-      component: () => import('../views/HomeView.vue'),
-      meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] }
+      component: () => import('@/views/PilotageView.vue'),
+      meta: { requiresAuth: true, rolesAutorises: ['admin'] }
     },
     {
       path: '/synthese-paie',
       name: 'synthese-paie',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('../views/SynthesePaieView.vue'),
       meta: { requiresAuth: true, rolesAutorises: ['admin', 'coordo'] }
     }
   ],
@@ -103,6 +102,7 @@ router.beforeEach((to, from) => {
   } 
 
   // 🟢 Règle 3 : Tout est OK, on laisse passer
+  return true
 })
 
 export default router

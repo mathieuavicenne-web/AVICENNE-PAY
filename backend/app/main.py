@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 import structlog
 from app.core.logging_config import setup_logging
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, declarations, missions, paie, user 
+from app.routers import auth, declarations, missions, paie, user
 
 # Récupération de la vériable d'env
 origins_env = os.getenv(

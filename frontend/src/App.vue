@@ -35,19 +35,8 @@
         </div>
       </nav>
 
-      <main class="container text-center mt-5">
-        
-        <button @click="appelerLeBackend" class="btn btn-warning p-3 mb-4">
-          Tester la connexion avec Python 🐍
-        </button>
-
-        <div v-if="reponsePython" class="alert alert-info mt-3 shadow-sm mx-auto" style="max-width: 500px;">
-          <strong>Réponse du serveur :</strong> {{ reponsePython }}
-        </div>
-
-        <div class="mt-5">
-          <RouterView />
-        </div>
+      <main class="container mt-4">
+        <RouterView />
       </main>
     </div>
 
@@ -58,7 +47,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { authService } from '@/services/api' 
-import api from '@/services/api' // 👈 Import de l'instance API pour uniformiser le test Python
 import './assets/main.css'
 
 const router = useRouter()
@@ -68,9 +56,6 @@ const route = useRoute()
 const estConnecte = ref(false)
 const userRole = ref('')
 const prenomUtilisateur = ref('Utilisateur') // Par défaut
-const loading = ref(false)
-const errorMessage = ref('')
-const reponsePython = ref('')
 
 // --- Fonction pour récupérer le profil complet ---
 const chargerProfil = async () => {
@@ -92,7 +77,7 @@ const chargerProfil = async () => {
   }
 }
 
-// 🟢 LA CORRECTION : Si l'utilisateur change de page (ex: après s'être connecté), on recharge le profil !
+// 🟢 Si l'utilisateur change de page (ex: après s'être connecté), on recharge le profil !
 watch(() => route.path, () => {
   chargerProfil()
 })
@@ -100,17 +85,6 @@ watch(() => route.path, () => {
 onMounted(() => {
   chargerProfil()
 })
-
-// --- Fonction de test Python modifiée pour utiliser Axios et le préfixe ---
-async function appelerLeBackend() {
-  try {
-    // Taper sur / donne le message de bienvenue avec notre base URL (axios ajoute le port 8000 et /api/v1)
-    const response = await api.get('/') 
-    reponsePython.value = response.data.message || response.data
-  } catch (error) {
-    reponsePython.value = "Erreur de connexion : " + error.message
-  }
-}
 
 // --- Fonction de déconnexion ---
 const seDeconnecter = () => {

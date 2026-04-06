@@ -95,7 +95,8 @@ class UserOut(UserBase):
     profil_complete: bool
     type_contrat: Optional[TypeContrat] = None 
     
-    # 🔒 On ajoute ces deux lignes pour rassurer le Front-end !
+    # 🔒 On les laisse à None ici pour rassurer le Front,
+    # mais on ne les alimentera JAMAIS sur cette route pour la sécurité !
     nss: Optional[str] = None
     iban: Optional[str] = None
 

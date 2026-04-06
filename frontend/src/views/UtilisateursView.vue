@@ -164,6 +164,96 @@ const utilisateursTries = computed(() => {
   })
 })
 
+// 🎯 NOUVEAU : Export Excel des utilisateurs
+const exporterUtilisateurs = async () => {
+  try {
+    // Chargement dynamique d'ExcelJS si pas déjà présent
+    if (!window.ExcelJS) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    }
+    
+    const ExcelJS = window.ExcelJS
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Base Utilisateurs')
+
+    // Définition des colonnes
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'NOM', key: 'nom', width: 20 },
+      { header: 'PRÉNOM', key: 'prenom', width: 20 },
+      { header: 'EMAIL', key: 'email', width: 30 },
+      { header: 'RÔLE', key: 'role', width: 15 },
+      { header: 'SITE', key: 'site', width: 15 },
+      { header: 'PROGRAMME', key: 'programme', width: 20 },
+      { header: 'MATIÈRE', key: 'matiere', width: 25 },
+      { header: 'STATUT', key: 'statut', width: 12 }
+    ]
+
+    // Style de l'entête
+    const headerRow = worksheet.getRow(1)
+    headerRow.height = 25
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF198754' } } // Vert Bootstrap
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+
+    // Remplissage des lignes (on prend utilisateursTries pour respecter la recherche en cours !)
+    utilisateursTries.value.forEach((user, index) => {
+      const row = worksheet.addRow({
+        id: user.id,
+        nom: user.nom ? user.nom.toUpperCase() : '',
+        prenom: user.prenom || '',
+        email: user.email || '',
+        role: user.role ? user.role.toUpperCase() : '',
+        site: user.site || 'N/A',
+        programme: user.programme || '-',
+        matiere: user.matiere || '-',
+        statut: user.is_active ? 'Actif' : 'Inactif'
+      })
+
+      row.height = 20
+      
+      // Alignements
+      row.getCell(1).alignment = { horizontal: 'center' }
+      row.getCell(5).alignment = { horizontal: 'center' }
+      row.getCell(6).alignment = { horizontal: 'center' }
+      row.getCell(9).alignment = { horizontal: 'center' }
+
+      // Alternance de couleur pour les lignes
+      if (index % 2 !== 0) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } }
+        })
+      }
+    })
+
+    // Génération et téléchargement du fichier
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `Base_Utilisateurs_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+  } catch (error) {
+    console.error("Erreur lors de l'export Excel :", error)
+    alert("Impossible de générer le fichier Excel.")
+  }
+}
+
 const chargerDonnees = async () => {
   isLoading.value = true
   
@@ -434,7 +524,17 @@ const basculerStatut = async (user) => {
       </div>
     </div>
 
-    <div class="row mb-3">
+   <div class="row mb-3 align-items-center">
+      <div class="col-md-4">
+        <button 
+          v-if="roleUserConnecte === 'admin'" 
+          class="btn btn-outline-success btn-sm fw-bold" 
+          @click="exporterUtilisateurs"
+        >
+          📊 Exporter la base (Excel)
+        </button>
+      </div>
+      
       <div class="col-md-4 ms-auto">
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-white border-end-0">
