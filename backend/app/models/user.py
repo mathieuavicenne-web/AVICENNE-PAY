@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import String, Boolean, DateTime, Enum as SAEnum, func, ForeignKey, text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.database import Base
+from app.core.referentiels import Filiere, Annee
 
 if TYPE_CHECKING:
     from app.models.declaration import Declaration
@@ -82,6 +82,10 @@ class User(Base):
     # --- CONTEXTE PÉDAGOGIQUE (Pour les RESP et TCP) ---
     programme: Mapped[Optional[Programme]] = mapped_column(SAEnum(Programme, name="programme_enum"))
     matiere: Mapped[Optional[str]] = mapped_column(String(100))
+
+    # FILIÈRE ET ANNÉE (Optionnels)
+    filiere: Mapped[Optional[Filiere]] = mapped_column(SAEnum(Filiere, name="filiere_enum"), nullable=True)
+    annee: Mapped[Optional[Annee]] = mapped_column(SAEnum(Annee, name="annee_enum"), nullable=True)
 
     # --- MÉTADONNÉES ---
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -17,7 +17,7 @@ const peutGererUtilisateurs = ref(false)
 const recherche = ref('')
 
 // --- États pour le tri ---
-const colonneTriee = ref('nom')
+const colonneTriee = ref('role')
 const ordreTri = ref('asc')
 
 // --- États pour le formulaire ---
@@ -106,6 +106,17 @@ const sitesAutorises = computed(() => {
 })
 
 // 🔥 Tableau filtré ET trié réactif
+// Définition de l'ordre personnalisé pour les rôles
+const ordrePrioriteRoles = {
+  'admin': 1,
+  'coordo': 2,
+  'top_com': 3,
+  'top': 4,
+  'resp': 5,
+  'tcp': 6,
+  'com': 7
+}
+
 const utilisateursTries = computed(() => {
   let resultat = [...utilisateurs.value]
   
@@ -131,6 +142,17 @@ const utilisateursTries = computed(() => {
     if (valeurA === null || valeurA === undefined) valeurA = ''
     if (valeurB === null || valeurB === undefined) valeurB = ''
 
+    // 🔥 TRI SPÉCIFIQUE POUR LES RÔLES
+    if (colonneTriee.value === 'role') {
+      const poidsA = ordrePrioriteRoles[valeurA.toLowerCase()] || 99
+      const poidsB = ordrePrioriteRoles[valeurB.toLowerCase()] || 99
+      
+      if (poidsA !== poidsB) {
+        return ordreTri.value === 'asc' ? poidsA - poidsB : poidsB - poidsA
+      }
+    }
+
+    // Le reste du tri (alphabétique pour les autres colonnes)
     if (typeof valeurA === 'string' && typeof valeurB === 'string') {
       valeurA = valeurA.toLowerCase()
       valeurB = valeurB.toLowerCase()

@@ -39,6 +39,97 @@ const declarationEnCours = ref({
   lignes: []
 })
 
+// --- ÉTATS POUR LA RECHERCHE ET LE TRI ---
+const recherche = ref('')
+const colonneTriee = ref('updated_at') // Tri par défaut sur la date de mise à jour
+const ordreTri = ref('desc') // Du plus récent au plus ancien par défaut
+
+// Fonction pour changer la colonne de tri
+const changerTri = (colonne) => {
+  if (colonneTriee.value === colonne) {
+    ordreTri.value = ordreTri.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    colonneTriee.value = colonne
+    ordreTri.value = 'asc'
+  }
+}
+
+// 🔥 Filtrage et Tri combinés des déclarations
+const declarationsFiltreesEtTriees = computed(() => {
+  let resultat = [...declarations.value]
+
+  // 1. Recherche dynamique
+  if (recherche.value.trim() !== '') {
+    const terme = recherche.value.toLowerCase().trim()
+    resultat = resultat.filter(dec => {
+      const auteur = `${dec.user?.prenom || ''} ${dec.user?.nom || ''}`.toLowerCase()
+      const site = (dec.user?.site || '').toLowerCase()
+      const role = (dec.user?.role || '').toLowerCase()
+      const programme = (dec.user?.programme || '').toLowerCase()
+      const matiere = (dec.user?.matiere || '').toLowerCase()
+      const statut = (dec.statut || '').toLowerCase()
+
+      return (
+        auteur.includes(terme) ||
+        site.includes(terme) ||
+        role.includes(terme) ||
+        programme.includes(terme) ||
+        matiere.includes(terme) ||
+        statut.includes(terme)
+      )
+    })
+  }
+
+  // 2. Tri dynamique
+  return resultat.sort((a, b) => {
+    let valeurA, valeurB
+
+    // Récupération des valeurs selon la colonne ciblée
+    switch (colonneTriee.value) {
+      case 'auteur':
+        valeurA = `${a.user?.nom || ''} ${a.user?.prenom || ''}`.toLowerCase()
+        valeurB = `${b.user?.nom || ''} ${b.user?.prenom || ''}`.toLowerCase()
+        break
+      case 'site':
+        valeurA = (a.user?.site || '').toLowerCase()
+        valeurB = (b.user?.site || '').toLowerCase()
+        break
+      case 'role':
+        valeurA = (a.user?.role || '').toLowerCase()
+        valeurB = (b.user?.role || '').toLowerCase()
+        break
+      case 'programme':
+        valeurA = (a.user?.programme || '').toLowerCase()
+        valeurB = (b.user?.programme || '').toLowerCase()
+        break
+      case 'matiere':
+        valeurA = (a.user?.matiere || '').toLowerCase()
+        valeurB = (b.user?.matiere || '').toLowerCase()
+        break
+      case 'total_brut':
+        valeurA = a.total_remuneration || 0
+        valeurB = b.total_remuneration || 0
+        break
+      case 'statut':
+        valeurA = (a.statut || '').toLowerCase()
+        valeurB = (b.statut || '').toLowerCase()
+        break
+      case 'updated_at':
+        valeurA = new Date(a.updated_at || 0)
+        valeurB = new Date(b.updated_at || 0)
+        break
+      default:
+        valeurA = ''
+        valeurB = ''
+    }
+
+    // Comparaison
+    if (valeurA < valeurB) return ordreTri.value === 'asc' ? -1 : 1
+    if (valeurA > valeurB) return ordreTri.value === 'asc' ? 1 : -1
+    return 0
+  })
+})
+
 // --- CHARGEMENT DES DONNÉES ---
 const chargerDonnees = async () => {
   loading.value = true
@@ -322,7 +413,24 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      
+      <div class="row mb-3">
+        <div class="col-md-4 ms-auto">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white border-end-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-search text-muted" viewBox="0 0 16 16">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+              </svg>
+            </span>
+            <input 
+              v-model="recherche" 
+              type="text" 
+              class="form-control border-start-0 ps-1" 
+              placeholder="Rechercher un auteur, site, rôle..."
+            >
+            <button v-if="recherche" class="btn btn-outline-secondary" type="button" @click="recherche = ''">✖</button>
+          </div>
+        </div>
+      </div>
       <div v-if="showFormulaire && canCreate" class="bg-white p-6 rounded-lg shadow mb-6 border-2 border-primary">
         <h3 class="text-lg font-bold mb-4 text-primary">
           {{ declarationEnCours.id ? 'Modifier la Déclaration' : 'Nouvelle Déclaration' }}
@@ -394,20 +502,36 @@ onMounted(async () => {
         <table class="min-w-full table-auto">
             <thead class="bg-gray-50 border-b">
                 <tr>
-                <th v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Auteur</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Site</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Programme</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Matière</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Brut</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière MàJ</th>
+                <th v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('auteur')">
+                  Auteur <span class="ms-1">{{ colonneTriee === 'auteur' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('site')">
+                  Site <span class="ms-1">{{ colonneTriee === 'site' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('role')">
+                  Rôle <span class="ms-1">{{ colonneTriee === 'role' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('programme')">
+                  Programme <span class="ms-1">{{ colonneTriee === 'programme' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('matiere')">
+                  Matière <span class="ms-1">{{ colonneTriee === 'matiere' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('total_brut')">
+                  Total Brut <span class="ms-1">{{ colonneTriee === 'total_brut' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('statut')">
+                  Statut <span class="ms-1">{{ colonneTriee === 'statut' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" @click="changerTri('updated_at')">
+                  Dernière MàJ <span class="ms-1">{{ colonneTriee === 'updated_at' ? (ordreTri === 'asc' ? '▲' : '▼') : '' }}</span>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
             
             <tbody class="divide-y divide-gray-200">
-                <tr v-for="dec in declarations" :key="dec.id" class="hover:bg-gray-50 transition-colors">
+                <tr v-for="dec in declarationsFiltreesEtTriees" :key="dec.id" class="hover:bg-gray-50 transition-colors">
                 
                 <td v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" class="px-6 py-4 text-sm font-medium text-gray-700">
                     <span v-if="dec.user?.prenom || dec.user?.nom">

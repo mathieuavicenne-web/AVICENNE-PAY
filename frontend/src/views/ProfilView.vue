@@ -1,5 +1,3 @@
-// frotend/src/views/ProfilView.vue
-
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { authService } from '@/services/api' // On suppose que authService a une méthode updateProfile()
@@ -15,12 +13,18 @@ const profil = ref({
   ville: '',
   nss: '',
   iban: '',
+  filiere: '', // 🔥 Ajouté
+  annee: '',   // 🔥 Ajouté
   profil_complete: false
 })
 
 const isEditing = ref(false)
 const isLoading = ref(true)
 const isSaving = ref(false)
+
+// 🔥 LISTES DES ENUMS (Aussi récupérables via un getReferentiels si tu préfères)
+const filieres = ["Médecine", "Pharmacie", "Maïeutique", "Odontologie", "Kinésithérapie"]
+const annees = ["P2", "D1", "D2", "D3"]
 
 // Pour calculer les initiales de l'avatar
 const initiales = computed(() => {
@@ -70,7 +74,9 @@ const sauvegarderProfil = async () => {
       telephone: profil.value.telephone,
       adresse: profil.value.adresse,
       code_postal: profil.value.code_postal,
-      ville: profil.value.ville
+      ville: profil.value.ville,
+      filiere: profil.value.filiere || null, // 🔥 Ajouté (on passe null si vide pour le backend)
+      annee: profil.value.annee || null      // 🔥 Ajouté
     }
 
     // 2. Traitement sécurisé du NSS (si applicable)
@@ -177,6 +183,23 @@ const sauvegarderProfil = async () => {
                 <div v-else class="py-2">{{ profil.ville || '—' }}</div>
               </div>
 
+              <div class="col-sm-4 text-muted fw-bold align-self-center">Filière</div>
+              <div class="col-sm-8">
+                <select v-if="isEditing" class="form-select" v-model="profil.filiere">
+                  <option value="">-- Non renseigné --</option>
+                  <option v-for="fil in filieres" :key="fil" :value="fil">{{ fil }}</option>
+                </select>
+                <div v-else class="py-2">{{ profil.filiere || '—' }}</div>
+              </div>
+
+              <div class="col-sm-4 text-muted fw-bold align-self-center">Année d'étude</div>
+              <div class="col-sm-8">
+                <select v-if="isEditing" class="form-select" v-model="profil.annee">
+                  <option value="">-- Non renseigné --</option>
+                  <option v-for="ann in annees" :key="ann" :value="ann">{{ ann }}</option>
+                </select>
+                <div v-else class="py-2">{{ profil.annee || '—' }}</div>
+              </div>
               <div class="col-sm-4 text-muted fw-bold align-self-center">N° Sécurité Sociale</div>
               <div class="col-sm-8">
                 <input v-if="isEditing" type="text" class="form-control" v-model="profil.nss" placeholder="15 chiffres" required>
