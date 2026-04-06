@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# app/models/referentiels.py
+# app/core/referentiels.py
 import enum 
 
 # ── 1. LE RÉFÉRENTIEL DES MATIÈRES ───────────────────────────────────────
