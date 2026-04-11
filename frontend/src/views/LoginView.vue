@@ -1,90 +1,100 @@
 <template>
-  <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; width: 100vw; background-color: #f8f9fa;">
-    
-    <div class="card shadow-sm" style="max-width: 400px; width: 100%; padding: 2rem; background-color: white;">
-      <div class="card-body">
-        <h2 class="navbar-brand text-center d-block mb-4" style="font-size: 1.6rem; color: var(--primary-dark);">
-          Avicenne Pay
-        </h2>
-        
-        <p class="text-center text-muted mb-4" style="font-size: 0.9rem;">
-          Veuillez vous connecter pour accéder au tableau de bord.
-        </p>
+  <div class="login-container d-flex align-items-center justify-content-center">
+    <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4 p-3 text-center">
+      
+      <h1 class="h1-avicenne mb-1">Avicenne Pay</h1>
+      <p class="text-muted small mb-4">Portail d'excellence pour les futurs professionnels de santé</p>
 
-        <form @submit.prevent="handleLogin">
-          <div class="mb-3">
-            <label for="email" class="form-label" style="font-weight: 600; font-size: 0.85rem; text-transform: uppercase; color: var(--gray-muted);">
-              Email Professionnel
-            </label>
-            <input 
-              type="email" 
-              id="email" 
-              class="form-control" 
-              v-model="email" 
-              required 
-              placeholder="admin@avicenne.fr"
-              style="border-radius: 0.5rem;"
-            >
-          </div>
+      <div class="card shadow-avicenne login-card">
+        <div class="card-body p-4 p-md-5">
           
-          <div class="mb-4">
-            <label for="password" class="form-label" style="font-weight: 600; font-size: 0.85rem; text-transform: uppercase; color: var(--gray-muted);">
-              Mot de passe
-            </label>
-            <input 
-              type="password" 
-              id="password" 
-              class="form-control" 
-              v-model="password" 
-              required 
-              placeholder="••••••"
-              style="border-radius: 0.5rem;"
-            >
+          <div class="d-flex justify-content-center mb-4">
+            <div class="avicenne-heart-logo animate-pulse-heart">
+              <i class="bi bi-suit-heart-fill"></i>
+              <i class="bi bi-activity"></i>
+            </div>
           </div>
 
-          <button 
-            type="submit" 
-            class="btn btn-success w-100 py-2" 
-            :disabled="isLoading"
-            style="border-radius: 0.5rem;"
-          >
-            {{ isLoading ? 'Connexion en cours...' : 'Se connecter' }}
-          </button>
-          
-          <div v-if="errorMessage" class="mt-3 text-center badge bg-soft-danger w-100 py-2">
-            ⚠️ {{ errorMessage }}
-          </div>
-        </form>
+          <form @submit.prevent="handleLogin">
+            <div class="mb-4 text-start">
+              <label class="form-label small fw-bold text-muted">Identifiant Avicenne</label>
+              <div class="input-group custom-group">
+                <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                <input 
+                  v-model="email" 
+                  type="email" 
+                  class="form-control" 
+                  placeholder="nom@avicenne.fr" 
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="mb-4 text-start">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small fw-bold text-muted mb-0">Code d'accès</label>
+                <router-link to="/forgot-password" class="text-primary small fw-bold text-decoration-none">
+                  Oublié ?
+                </router-link>
+              </div>
+              <div class="input-group custom-group">
+                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                <input 
+                  v-model="password" 
+                  type="password" 
+                  class="form-control" 
+                  placeholder="••••••••" 
+                  required
+                >
+              </div>
+            </div>
+
+            <div v-if="error" class="alert alert-danger-soft small mb-4 animate-pulse">
+               {{ error }}
+            </div>
+
+            <button type="submit" class="btn btn-avicenne-submit w-100" :disabled="loading">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <span v-else>Accéder à mon espace <i class="bi bi-chevron-right ms-2"></i></span>
+            </button>
+          </form>
+
+        </div>
+      </div>
+
+      <div class="text-center mt-5">
+        <p class="text-muted small opacity-50">&copy; 2026 Avicenne Pay — Excellence & Réussite</p>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authService } from '@/services/api' 
+import { authService } from '@/services/api' // Branchement réel
 
 const router = useRouter()
-
 const email = ref('')
 const password = ref('')
-const isLoading = ref(false) // On garde bien isLoading ici !
-const errorMessage = ref('')
+const error = ref('')
+const loading = ref(false)
 
 const handleLogin = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
+  loading.value = true
+  error.value = ''
   
   try {
+    // APPEL RÉEL À TA BDD
     await authService.login(email.value, password.value)
     router.push('/dashboard')
-  } catch (error) {
-    console.error('Erreur de connexion:', error)
-    errorMessage.value = "Email ou mot de passe incorrect."
+  } catch (err) {
+    console.error("Erreur login:", err)
+    error.value = err.response?.data?.message || "Identifiants incorrects ou accès refusé."
   } finally {
-    isLoading.value = false
+    loading.value = false
   }
 }
 </script>
+
+  

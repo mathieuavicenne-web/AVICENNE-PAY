@@ -45,14 +45,14 @@ const router = createRouter({
       name: 'catalogue-missions',
       component: () => import('../views/MissionsCatalogueView.vue'),
       props: true,
-      meta: { requiresAuth: true }, // Tout le monde peut voir les catalogues (les rôles sont gérés par ton back !)
+      meta: { requiresAuth: true },
       beforeEnter: (to, from, next) => {
-        // Petite sécurité supplémentaire pour éviter qu'un malin tape /missions/nimportequoi dans l'URL
         const typeDemande = to.params.type.toLowerCase();
-        if (['ccda', 'cddu'].includes(typeDemande)) {
+        // Correction ici : assure-toi que ça matche tes URLs (ccda et ccdu ou cddu)
+        if (['ccda', 'ccdu', 'cddu'].includes(typeDemande)) { 
           next();
         } else {
-          next({ name: 'dashboard' }); // On redirige si le type de contrat n'existe pas
+          next({ name: 'dashboard' });
         }
       }
     },

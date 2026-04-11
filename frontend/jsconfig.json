@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "checkJs": false,
+    "allowJs": true,
     "paths": {
       "@/*": ["./src/*"]
     }
   },
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

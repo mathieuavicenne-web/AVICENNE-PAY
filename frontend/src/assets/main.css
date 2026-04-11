@@ -1,25 +1,27 @@
-/* --- 🎨 PALETTE DE COULEURS AVICENNE MODERNISÉE --- */
+/* ================================================================
+🎨 PALETTE DE COULEURS & VARIABLES
+================================================================ */
 :root {
-    /* Couleurs principales */
-    --primary-color: #0d6efd;
-    --primary-dark: #0a58ca;
-    --primary-soft: rgba(13, 110, 253, 0.08);
+    --primary-color: #4396d1;       /* Bleu Avicenne (calibré Nav) */
+    --primary-dark: #357abd;
+    --primary-soft: rgba(67, 150, 209, 0.12);
+    --primary-subtle: rgba(67, 150, 209, 0.05);
     
-    --warning-color: #ffca2c; /* Le Jaune Avicenne iconique */
+    --warning-color: #ffca2c;      /* Jaune Avicenne */
     --danger-color: #dc3545;
     --success-color: #198754;
+
+    --bg-light: #f4f7f9;           /* Gris-bleu clinique */
+    --bg-white: #ffffff;
     
-    /* Couleurs de fond & Surface (Effet SaaS moderne) */
-    --bg-light: #f8f9fa;      /* Fond de l'application légèrement grisé */
-    --bg-white: #ffffff;      /* Fond des cartes et conteneurs */
-    
-    /* Typographie & Bordures */
-    --text-dark: #1e293b;     /* Un noir bleuté plus doux que le noir pur */
-    --text-muted: #64748b;    /* Gris ardoise pour les sous-titres */
-    --color-border: #e2e8f0;  /* Bordures très claires */
+    --text-dark: #2c3e50;          /* Gris-bleu profond */
+    --text-muted: #64748b;
+    --color-border: #e2e8f0;
 }
 
-/* --- 🧱 RESET & BASE --- */
+/* ================================================================
+🧱 RESET & BASE
+================================================================ */
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -28,130 +30,358 @@
 
 body {
     background-color: var(--bg-light);
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     color: var(--text-dark);
     font-size: 15px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
 }
 
-/* --- 💎 ÉLÉMENTS DE SURFACE (Le look moderne) --- */
+/* ================================================================
+💎 ÉLÉMENTS DE SURFACE & CARDS
+================================================================ */
 .card {
     border: 1px solid var(--color-border) !important;
-    border-radius: 1rem; /* Angles bien arrondis */
+    border-radius: 1rem;
     background-color: var(--bg-white);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.shadow-sm {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+/* LE CADRE SOUTENU (Spécifique Login) */
+.login-card {
+    border: 1.5px solid var(--primary-color) !important; /* Ligne bleue affirmée */
+    border-radius: 1.25rem !important;
+    box-shadow: 0 15px 35px rgba(67, 150, 209, 0.1) !important;
 }
 
-/* --- 🧭 NAVBAR --- */
+.shadow-avicenne {
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ================================================================
+🧭 NAVIGATION & TITRES
+================================================================ */
 .navbar {
     border-bottom: 1px solid var(--color-border);
     background-color: var(--bg-white) !important;
 }
-.navbar-brand {
-    font-size: 1.3rem;
-    letter-spacing: -0.5px;
-    font-weight: 700;
-    color: var(--text-dark) !important;
+
+h1, .h1-avicenne {
+    color: var(--primary-color) !important;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
 }
 
-/* --- 🕹️ BOUTONS --- */
-.btn {
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+/* ================================================================
+🕹️ BOUTONS & FORMULAIRES PREMIUM
+================================================================ */
+
+/* BOUTON ÉLÉGANT ET AFFINÉ */
+.btn-avicenne-submit {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0.8rem 1.5rem; 
     font-weight: 600;
-    border-radius: 0.5rem;
-    transition: all 0.2s ease-in-out;
-}
-
-/* Le fameux jaune flashy d'Avicenne */
-.btn-warning {
-    background-color: var(--warning-color);
-    border: none;
-    color: #000 !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-.btn-warning:hover {
-    background-color: #f0bc10;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-}
-
-.btn-success {
-    background-color: var(--success-color);
-    border: none;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-.btn-success:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* --- 📊 TABLEAUX --- */
-.table thead th {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-avicenne-submit:hover:not(:disabled) {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px var(--primary-soft);
+}
+
+/* CHAMPS DE SAISIE PERSONNALISÉS */
+.custom-group .input-group-text {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-right: none;
     color: var(--text-muted);
-    border-bottom: 1px solid var(--color-border);
-    background-color: rgba(248, 249, 250, 0.5);
-}
-.table tbody td {
-    vertical-align: middle;
-    color: var(--text-dark);
-}
-.table-hover tbody tr:hover {
-    background-color: var(--primary-soft);
+    padding-left: 1.25rem;
 }
 
-/* --- 🏷️ BADGES & COMPOSANTS --- */
-.badge {
-    font-weight: 600;
-    padding: 0.45em 0.8em;
-    border-radius: 0.375rem;
+.custom-group .form-control {
+    border: 1px solid var(--color-border);
+    border-left: none;
+    font-size: 0.95rem;
+    padding: 0.75rem 1rem;
 }
-.bg-primary-subtle { background-color: var(--primary-soft) !important; color: var(--primary-color); }
-.bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; color: var(--success-color); }
 
-.avatar-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+.custom-group:focus-within {
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* ================================================================
+🩺 MÉDICAL : L'ICÔNE SIGNATURE
+================================================================ */
+.avicenne-heart-logo {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    width: 60px;
+    height: 60px;
+}
+
+.avicenne-heart-logo .bi-suit-heart-fill {
     color: var(--primary-color);
-    border: 1px solid var(--color-border);
-    flex-shrink: 0;
+    font-size: 4rem;
+    z-index: 1;
 }
 
-.progress {
-    background-color: #f1f5f9;
-    border-radius: 10px;
-}
-.progress-bar-dynamic {
-    border-radius: 10px;
-    transition: width 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+.avicenne-heart-logo .bi-activity {
+    position: absolute;
+    color: white !important;
+    font-size: 1.8rem;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    /* Centrage parfait dans le creux du coeur */
+    transform: translate(-50%, -40%); 
 }
 
-/* --- ✨ ANIMATIONS & INTERACTIONS --- */
+/* Alertes d'erreurs douces */
+.alert-danger-soft {
+    background-color: #fff1f2;
+    color: var(--danger-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+/* ================================================================
+✨ ANIMATIONS
+================================================================ */
+@keyframes pulse-heart {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
 @keyframes pulse-red {
     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
-    70% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-}
-.animate-pulse {
-    animation: pulse-red 2s infinite;
+    70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { transform: scale(1); }
 }
 
-.hover-primary:hover {
-    color: var(--primary-color) !important;
+.animate-pulse-heart { animation: pulse-heart 2s ease-in-out infinite; }
+.animate-pulse { animation: pulse-red 2s infinite; }
+.hover-underline:hover { text-decoration: underline !important; }
+/* ================================================================
+📊 DASHBOARD : ICÔNES & TITRES
+================================================================ */
+.action-icon i {
+    color: var(--primary-color) !important; /* Force l'icône en bleu */
+}
+
+.card h5 {
+    color: var(--primary-color); /* Met les titres de card en bleu */
+}
+
+.btn-outline-primary-custom {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary-custom:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.badge-soft {
+    background-color: var(--primary-soft);
+    color: var(--primary-color);
+}
+/* ================================================================
+📋 COMPOSANT : DÉCLARATIONS & TABLEAUX
+================================================================ */
+
+/* Badges de Statut (Style Hospitalier Doux) */
+.badge-statut {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+}
+.badge-statut.brouillon { background-color: #fef3c7; color: #92400e; }
+.badge-statut.soumise   { background-color: #e0f2fe; color: #075985; }
+.badge-statut.validee   { background-color: #dcfce7; color: #166534; }
+
+/* Badges de Rôle (Style Médical Pastel) */
+.badge-role {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid var(--color-border);
+}
+
+/* Couleurs spécifiques aux rôles */
+.badge-role-admin  { background-color: #ede9fe !important; color: #5b21b6 !important; }
+.badge-role-coordo { background-color: #ffedd5 !important; color: #9a3412 !important; }
+.badge-role-resp   { background-color: #fae8ff !important; color: #86198f !important; }
+
+/* ================================================================
+🪟 MODALES & INTERACTIONS
+================================================================ */
+.modal-backdrop-custom {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(67, 150, 209, 0.2); /* Utilisation de la variable primary */
+    backdrop-filter: blur(4px);
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 2000; 
+    padding: 15px;
+}
+
+.cursor-pointer { cursor: pointer; }
+
+/* Utilitaires de texte */
+.text-avicenne { color: var(--primary-color) !important; }
+.text-avicenne-dark { color: var(--text-dark) !important; }
+
+/* ================================================================
+🔘 BOUTONS DE TABLEAU (TEXTUELS)
+================================================================ */
+
+.btn-table {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
     cursor: pointer;
+    background: transparent;
+}
+
+/* Couleurs par type d'action */
+.btn-table-view { 
+    color: var(--text-muted); 
+    border-color: var(--color-border); 
+}
+.btn-table-view:hover { background: #f8fafc; color: var(--text-dark); }
+
+.btn-table-edit { 
+    color: var(--primary-color); 
+    border-color: var(--primary-soft); 
+}
+.btn-table-edit:hover { background: var(--primary-soft); }
+
+.btn-table-submit { 
+    color: #166534; 
+    background-color: #dcfce7; 
+}
+.btn-table-submit:hover { background-color: #bbf7d0; }
+
+.btn-table-evaluate { 
+    color: #ffffff; 
+    background-color: var(--primary-color); 
+}
+.btn-table-evaluate:hover { background-color: var(--primary-dark); }
+
+.btn-table-reopen { 
+    color: #991b1b; 
+    border-color: #fecaca; 
+}
+.btn-table-reopen:hover { background: #fef2f2; }
+
+/* État désactivé */
+.btn-table:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+/* Style pour la ligne de total dans la modale */
+tfoot tr {
+    border-top: 2px solid var(--avicenne-blue); /* Ligne de séparation forte */
+}
+
+tfoot td {
+    border: none;
+}
+
+/* Optionnel : un petit badge discret pour le total */
+.total-final {
+    color: var(--avicenne-blue);
+    font-size: 1.1rem;
+    letter-spacing: -0.5px;
+}
+/* ================================================================
+🔘 SEGMENTED CONTROLS (FILTRES DE STATUT)
+================================================================ */
+.btn-group.shadow-sm {
+    border: 1px solid var(--color-border);
+    background-color: #ffffff !important;
+    padding: 4px !important;
+}
+
+.btn-group .btn {
+    border-radius: 8px !important; /* Arrondi plus doux style iOS/Moderne */
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 6px 16px;
+    transition: all 0.25s ease;
+    border: none !important;
+}
+
+/* --- ÉTATS ACTIFS (Couleurs synchronisées avec tes badges) --- */
+
+/* Brouillon : Jaune Avicenne */
+.btn-group .btn-secondary { 
+    background-color: #fef3c7 !important; 
+    color: #92400e !important; 
+    box-shadow: 0 2px 4px rgba(146, 64, 14, 0.1);
+}
+
+/* Soumise : Bleu Avicenne */
+.btn-group .btn-primary { 
+    background-color: #e0f2fe !important; 
+    color: #075985 !important; 
+    box-shadow: 0 2px 4px rgba(7, 89, 133, 0.1);
+}
+
+/* Validée : Vert Médical */
+.btn-group .btn-success { 
+    background-color: #dcfce7 !important; 
+    color: #166534 !important; 
+    box-shadow: 0 2px 4px rgba(22, 101, 52, 0.1);
+}
+
+/* --- ÉTAT INACTIF --- */
+.btn-group .text-muted.bg-transparent {
+    color: var(--text-muted) !important;
+    opacity: 0.6;
+}
+
+.btn-group .btn:hover:not(.btn-secondary):not(.btn-primary):not(.btn-success) {
+    background-color: #f1f5f9 !important;
+    color: var(--text-dark) !important;
+    opacity: 1;
 }

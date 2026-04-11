@@ -14,21 +14,17 @@ router = APIRouter(prefix="/missions", tags=["Missions"])
 # 🔓 LECTURE : Filtrée selon le rôle
 @router.get("/", response_model=List[MissionResponse])
 def get_missions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = db.query(Mission).filter(Mission.is_active == True)
+    # On récupère TOUT (actives et inactives)
+    query = db.query(Mission) 
     
-    # 🎯 RÈGLE DES TOGGLES : 
-    # Si l'utilisateur n'est pas Admin, on applique le ciblage des rôles
+    # On garde le filtrage par rôle (sécurité métier)
     if current_user.role != Role.admin:
         if current_user.role == Role.resp:
             query = query.filter(Mission.dispo_resp == True)
         elif current_user.role == Role.tcp:
             query = query.filter(Mission.dispo_tcp == True)
-        # 💡 Optionnel : Restreindre l'accès par défaut pour les rôles non gérés (ex: coordo, com...)
-        # else:
-        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès non autorisé.")
         
-    return query.order_by(Mission.categorie.asc(), Mission.id.asc()).all()
-
+    return query.order_by(Mission.is_active.desc(), Mission.categorie.asc()).all()
 
 # 🔒 CRÉATION : Réservée aux Admins (Tout) et Coordos (Uniquement CCDA)
 @router.post("/", response_model=MissionResponse, status_code=status.HTTP_201_CREATED)
