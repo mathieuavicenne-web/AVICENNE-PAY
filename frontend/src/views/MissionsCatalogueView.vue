@@ -37,16 +37,9 @@
         </thead>
 
         <tbody v-for="(listeMissions, nomCategorie) in missionsGroupees" :key="nomCategorie" class="border-b">
-          
-          <tr 
-            @click="toggleCategorie(nomCategorie)" 
-            class="bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors"
-          >
+          <tr @click="toggleCategorie(nomCategorie)" class="bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors">
             <td colspan="3" class="px-6 py-3 font-semibold text-gray-800">
-              <span 
-                class="inline-block me-2 transition-transform" 
-                :style="categoriesOuvertes.includes(nomCategorie) ? 'transform: rotate(90deg);' : ''"
-              >
+              <span class="inline-block me-2 transition-transform" :style="categoriesOuvertes.includes(nomCategorie) ? 'transform: rotate(90deg);' : ''">
                 ▶
               </span>
               {{ nomCategorie }} 
@@ -55,31 +48,13 @@
             <td v-if="peutGerer" class="px-6 py-3"></td>
           </tr>
 
-          <tr 
-            v-if="categoriesOuvertes.includes(nomCategorie)" 
-            v-for="mission in listeMissions" 
-            :key="mission.id"
-            class="hover:bg-gray-50 transition-colors bg-white border-t"
-          >
-            <td class="px-10 py-3 text-sm text-gray-700">
-              {{ mission.titre }}
-            </td>
-            <td class="px-6 py-3 text-sm font-semibold text-green-600">
-              {{ mission.tarif_unitaire }}€
-            </td>
-            <td class="px-6 py-3 text-sm text-gray-500">
-              {{ mission.unite }}
-            </td>
-            
+          <tr v-if="categoriesOuvertes.includes(nomCategorie)" v-for="mission in listeMissions" :key="mission.id" class="hover:bg-gray-50 transition-colors bg-white border-t">
+            <td class="px-10 py-3 text-sm text-gray-700">{{ mission.titre }}</td>
+            <td class="px-6 py-3 text-sm font-semibold text-green-600">{{ mission.tarif_unitaire }}€</td>
+            <td class="px-6 py-3 text-sm text-gray-500">{{ mission.unite }}</td>
             <td v-if="peutGerer" class="px-6 py-3 text-sm d-flex align-items-center gap-2">
               <div class="form-check form-switch mb-0">
-                <input 
-                  type="checkbox" 
-                  class="form-check-input" 
-                  role="switch"
-                  :checked="mission.is_active" 
-                  @change="basculerStatutMission(mission)"
-                />
+                <input type="checkbox" class="form-check-input" role="switch" :checked="mission.is_active" @change="basculerStatutMission(mission)" />
               </div>
               <button @click.stop="ouvrirModalEdition(mission)" class="btn btn-sm btn-outline-primary">✏️</button>
               <button @click.stop="supprimerMission(mission.id)" class="btn btn-sm btn-outline-danger">🗑️</button>
@@ -98,7 +73,17 @@
         <form @submit.prevent="enregistrerMission">
           <div class="mb-3">
             <label class="form-label text-sm font-medium text-gray-600">Catégorie</label>
-            <input v-model="formMission.categorie" type="text" class="form-control" placeholder="Ex: 📚 QCM" required />
+            <input 
+              v-model="formMission.categorie" 
+              type="text" 
+              class="form-control" 
+              list="categoriesList"
+              placeholder="Sélectionnez ou tapez une catégorie" 
+              required 
+            />
+            <datalist id="categoriesList">
+              <option v-for="cat in categoriesDisponibles" :key="cat" :value="cat" />
+            </datalist>
           </div>
 
           <div class="mb-3">
@@ -114,40 +99,33 @@
           <div class="mb-3">
             <label class="form-label text-sm font-medium text-gray-600">Unité</label>
             <select v-model="formMission.unite" class="form-select" required>
-                <option value="" disabled>Sélectionnez une unité</option>
-                
-                <optgroup label="⏱️ Temps">
-                  <option value="par heure">par heure</option>
-                  <option value="par jour">par jour</option>
-                  <option value="par mois">par mois</option>
-                  <option value="par séance">par séance</option>
-                </optgroup>
+              <option value="" disabled selected>-- Sélectionnez une unité --</option>
+              
+              <optgroup v-for="(listeUnites, famille) in UNITES_STRUCTUREES" :key="famille" :label="famille">
+                <option v-for="u in listeUnites" :key="u" :value="u">
+                  {{ u }}
+                </option>
+              </optgroup>
 
-                <optgroup label="📚 Volume / Rédaction">
-                  <option value="par qcm">par qcm</option>
-                  <option value="par annale et par année">par annale et par année</option>
-                  <option value="par post-it">par post-it</option>
-                  <option value="par support / map">par support / map</option>
-                </optgroup>
-
-                <optgroup label="🎯 Forfaitaire">
-                  <option value="forfait mise à jour estivale">forfait mise à jour estivale</option>
-                  <option value="par pré-colle">par pré-colle</option>
-                </optgroup>
+              <optgroup v-if="unitesHorsReferentiel.length > 0" label="❓ Autres unités détectées">
+                <option v-for="u in unitesHorsReferentiel" :key="u" :value="u">
+                  {{ u }}
+                </option>
+              </optgroup>
             </select>
           </div>
 
           <div class="mb-3">
             <label class="form-label text-sm font-medium text-gray-600 mb-2 d-block">Visibilité de la mission</label>
             <div class="d-flex gap-4">
-                <div class="form-check form-switch">
-                  <input v-model="formMission.dispo_resp" type="checkbox" class="form-check-input" id="dispResp" />
-                  <label class="form-check-label text-sm" for="dispResp">Disponible pour les Responsables</label>
-                </div>
-                <div class="form-check form-switch">
-                  <input v-model="formMission.dispo_tcp" type="checkbox" class="form-check-input" id="dispTcp" />
-                  <label class="form-check-label text-sm" for="dispTcp">Disponible pour les TCP</label>
-                </div>
+              <div class="form-check form-switch">
+                <input v-model="formMission.dispo_resp" type="checkbox" class="form-check-input" id="dispResp" />
+                <label class="form-check-label text-sm" for="dispResp">Disponible pour les Responsables</label>
+              </div>
+              <div class="form-check form-switch">
+                <input v-model="formMission.dispo_tcp" type="checkbox" class="form-check-input" id="dispTcp" />
+                <label class="form-check-label text-sm" for="dispTcp">Disponible pour les TCP</label>
+              </div>
             </div>
           </div>
           
@@ -184,7 +162,7 @@ const showModal = ref(false)
 const modeEdition = ref(false)
 const idMissionEnCours = ref(null)
 
-// 🆕 ÉTAT POUR L'ACCORDÉON : On stocke les noms des catégories ouvertes
+// ÉTAT POUR L'ACCORDÉON
 const categoriesOuvertes = ref([])
 
 // Formulaire relié au v-model
@@ -197,6 +175,19 @@ const formMission = ref({
   dispo_tcp: true,
   type_contrat: ''
 })
+
+// --- RÉFÉRENTIEL DES UNITÉS (Structuré par famille) ---
+const UNITES_STRUCTUREES = {
+  "⏱️ Temps": [
+    "par heure", "par jour", "par mois", "par séance"
+  ],
+  "📚 Volume / Rédaction": [
+    "par qcm", "par annale et par année", "par post-it", "par support / map"
+  ],
+  "🎯 Forfaitaire": [
+    "forfait mise à jour estivale", "par pré-colle"
+  ]
+}
 
 // --- DECODAGE DU ROLE ---
 const extraireRoleDuToken = () => {
@@ -213,37 +204,49 @@ const extraireRoleDuToken = () => {
   }
 }
 
-// 🔐 Vérification des droits : Seuls Admins et Coordos gèrent le catalogue
+// --- LOGIQUE DYNAMIQUE POUR LE FORMULAIRE ---
+
+// 1. Récupère les catégories existantes pour la datalist (suggestions)
+const categoriesDisponibles = computed(() => {
+  const cats = missions.value.map(m => m.categorie).filter(Boolean)
+  return [...new Set(cats)].sort()
+})
+
+// 2. Détecte si des unités "hors référentiel" existent en base de données
+const unitesHorsReferentiel = computed(() => {
+  const toutesLesUnitesOfficielles = Object.values(UNITES_STRUCTUREES).flat()
+  const unitesEnBase = missions.value.map(m => m.unite).filter(Boolean)
+  return [...new Set(unitesEnBase.filter(u => !toutesLesUnitesOfficielles.includes(u)))]
+})
+
+// 🔐 Vérification des droits
 const peutGerer = computed(() => ['admin', 'coordo'].includes(userRole.value))
 
-// 🆕 LOGIQUE DE L'ACCORDÉON : Fonction pour ouvrir/fermer une catégorie
+// LOGIQUE DE L'ACCORDÉON
 const toggleCategorie = (categorie) => {
   if (categoriesOuvertes.value.includes(categorie)) {
-    // Si elle est déjà ouverte, on l'enlève de la liste (donc elle se ferme)
     categoriesOuvertes.value = categoriesOuvertes.value.filter(c => c !== categorie)
   } else {
-    // Sinon, on l'ajoute à la liste (elle s'ouvre)
     categoriesOuvertes.value.push(categorie)
   }
 }
 
-// 🆕 LOGIQUE DE TRI ET GROUPEMENT : On transforme la liste plate en dossiers
+// LOGIQUE DE TRI ET GROUPEMENT POUR LE TABLEAU
 const missionsGroupees = computed(() => {
-  // 1. On prend les missions récupérées de l'API
-  const filtre = props.type.toUpperCase()
-  const missionsFiltrees = missions.value.filter(m => m.type_contrat === filtre)
-  
-  // 2. On les range dans un objet par catégorie
-  const groupe = missionsFiltrees.reduce((acc, mission) => {
-    const cat = mission.categorie
-    if (!acc[cat]) {
-      acc[cat] = [] // Crée le dossier s'il n'existe pas
-    }
-    acc[cat].push(mission) // Range la mission dedans
+  if (!Array.isArray(missions.value) || missions.value.length === 0) return {}
+
+  const filtreType = props.type.toUpperCase()
+
+  const missionsFiltrees = missions.value.filter(m => {
+    return (m.type_contrat || '').toUpperCase() === filtreType
+  })
+
+  return missionsFiltrees.reduce((acc, mission) => {
+    const cat = mission.categorie || 'Sans Catégorie'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(mission)
     return acc
   }, {})
-  
-  return groupe
 })
 
 // --- ACTIONS API ---
@@ -251,7 +254,7 @@ const chargerCatalogue = async () => {
   loading.value = true
   try {
     const toutesLesMissions = await missionService.getAllMissions()
-    missions.value = toutesLesMissions // Plus besoin de filtrer ici, c'est fait dans missionsGroupees !
+    missions.value = toutesLesMissions
   } catch (error) {
     console.error("Erreur lors du chargement des missions :", error)
   } finally {
@@ -265,16 +268,14 @@ const enregistrerMission = async () => {
 
     if (modeEdition.value) {
       await missionService.updateMission(idMissionEnCours.value, formMission.value)
-      alert("Mission mise à jour !")
     } else {
       await missionService.createMission(formMission.value)
-      alert("Mission créée avec succès !")
     }
     
     fermerModal()
     chargerCatalogue() 
   } catch (error) {
-    alert(error.message)
+    alert("Erreur lors de l'enregistrement : " + error.message)
   }
 }
 
@@ -283,20 +284,16 @@ const basculerStatutMission = async (mission) => {
     const nouveauStatut = !mission.is_active
     await missionService.updateMission(mission.id, { is_active: nouveauStatut })
     mission.is_active = nouveauStatut 
-    alert(nouveauStatut ? "Mission activée !" : "Mission désactivée !")
   } catch (error) {
     alert("Impossible de modifier le statut : " + error.message)
   }
 }
 
 const supprimerMission = async (id) => {
-  if (confirm("Êtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT cette mission du catalogue ? Cette action est irréversible !")) {
+  if (confirm("Supprimer définitivement cette mission ? Cette action est irréversible.")) {
     try {
-      // 🎯 C'est ici qu'on appelle notre nouvelle fonction du front !
       await missionService.deleteMissionDefinitive(id) 
-      alert("Mission supprimée définitivement.")
-      
-      chargerCatalogue() // On rafraîchit le tableau pour faire disparaître la ligne
+      chargerCatalogue()
     } catch (error) {
       alert("Erreur lors de la suppression : " + error.message)
     }
@@ -311,7 +308,7 @@ const ouvrirModalCreation = () => {
     categorie: '',
     titre: '',
     tarif_unitaire: 0,
-    unite: 'l\'unité',
+    unite: '', // Laissé vide pour forcer le choix
     dispo_resp: true,
     dispo_tcp: true,
     type_contrat: props.type.toUpperCase()
@@ -338,6 +335,7 @@ onMounted(() => {
 
 watch(() => props.type, () => {
   chargerCatalogue()
+  categoriesOuvertes.value = [] // Reset l'accordéon au changement d'onglet
 })
 </script>
 
