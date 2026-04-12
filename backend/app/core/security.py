@@ -49,6 +49,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "AVICENNE_SUPER_SECRET_KEY_2026" 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Fonction 1 : Hacher un mot de passe
 def get_password_hash(password: str) -> str:
@@ -67,6 +68,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    to_encode.update({"exp": expire, "type": "access"})
         
     to_encode.update({"exp": expire})
     
@@ -76,6 +79,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 # On indique à FastAPI où aller chercher le Token (dans le header Authorization)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+# Fonction 4 : Créer le jeton de renouvellement (Refresh Token)
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # On marque le type pour éviter qu'un refresh token soit utilisé comme access token
+    to_encode.update({"exp": expire, "type": "refresh"})
+    
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """

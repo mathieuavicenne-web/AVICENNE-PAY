@@ -2,8 +2,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from app.core.security import verify_password, create_access_token, get_password_hash
+from app.core.security import verify_password, create_access_token, get_password_hash, create_refresh_token, SECRET_KEY, ALGORITHM
 from sqlalchemy.orm import Session
+import jwt
 
 from app.database import get_db
 from app.models.user import User
@@ -55,7 +56,49 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Utilisation du .value sur l'enum de rôle pour le token JWT
+    # 🔑 On génère les DEUX tokens
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)}) # 👈 Nouveau
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/refresh")
+def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+    """
+    Vérifie le refresh token et génère un nouvel access token.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Refresh token invalide ou expiré",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        # 1. On décode le refresh token
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        # 2. Sécurité : On vérifie que c'est bien un token de type 'refresh'
+        if user_id is None or token_type != "refresh":
+            raise credentials_exception
+            
+    except jwt.PyJWTError:
+        raise credentials_exception
+
+    # 3. On récupère l'utilisateur
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+
+    # 4. On génère un NOUVEL access token
+    new_access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer"
+    }

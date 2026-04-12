@@ -687,7 +687,7 @@ const basculerStatut = async (user) => {
                 </td>
                 <td class="text-center">
                   <span :class="['badge-statut', user.is_active ? 'validee' : 'brouillon']">
-                    {{ user.is_active ? 'Actif' : 'Inactif' }}
+                    {{ user.is_active ? 'ACTIF' : 'INACTIF' }}
                   </span>
                 </td>
                 
