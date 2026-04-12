@@ -63,7 +63,6 @@ body {
 ================================================================ */
 .navbar {
     border-bottom: 1px solid var(--color-border);
-    background-color: var(--bg-white) !important;
 }
 
 h1, .h1-avicenne {
@@ -407,4 +406,27 @@ tfoot td {
 .x-small {
     font-size: 0.75rem !important;
     line-height: 1.2;
+}
+/* ================================================================
+🎯 FIX DROPDOWN & SELECTION
+================================================================ */
+
+/* Empêche le texte de devenir blanc sur fond blanc dans les dropdowns */
+.dropdown-item.router-link-exact-active {
+    background-color: var(--primary-soft) !important;
+    color: var(--primary-color) !important;
+}
+
+/* Style pour le "titre" du menu parent quand on est dans une sous-page */
+.nav-link.active-parent {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* Ajustement pour le logo dans la navbar */
+.scale-navbar-logo {
+    transform: scale(0.65);
+    transform-origin: center;
+    width: 50px;
+    height: 50px;
 }

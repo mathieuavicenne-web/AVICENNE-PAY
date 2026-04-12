@@ -374,12 +374,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-4 p-md-5">
-    
-    <div class="d-flex justify-content-between align-items-center mb-5">
+  <div class="p-6">
+    <div class="mb-8 d-flex justify-content-between align-items-center">
       <div>
-        <h1 class="h1-avicenne">Suivi des Déclarations</h1>
-        <p class="text-muted">Saisissez et pilotez les déclarations mensuelles.</p>
+        <h1 class="h1-avicenne m-0">Suivi des Déclarations</h1>
+        <p class="text-muted small mb-0">Saisissez et pilotez les déclarations mensuelles.</p>
       </div>
       <button v-if="canCreate" @click="showFormulaire = !showFormulaire" class="btn shadow-sm px-4" :class="showFormulaire ? 'btn-outline-danger' : 'btn-avicenne-submit'">
         {{ showFormulaire ? '✕ Annuler' : '＋ Nouvelle Déclaration' }}
@@ -611,7 +610,7 @@ onMounted(async () => {
             <i class="bi bi-file-earmark-text me-3 fs-3 text-avicenne"></i>
             <div>
               <h3 class="h4 fw-bold mb-0 text-avicenne-dark">Détail de la déclaration</h3>
-              <p class="text-muted small mb-0">Récapitulatif officiel des missions et tarifs</p>
+              <p class="text-muted small mb-0">Récapitulatif des missions réalisées</p>
             </div>
           </div>
 
@@ -642,7 +641,7 @@ onMounted(async () => {
               </tbody>
               <tfoot class="border-top-2">
                 <tr class="text-avicenne-dark" style="background-color: #f8fafc;">
-                  <td colspan="3" class="text-end fw-bold py-3">MONTANT TOTAL À PERCEVOIR :</td>
+                  <td colspan="3" class="text-end fw-bold py-3">MONTANT TOTAL :</td>
                   <td class="text-end fw-bold py-3 fs-5 text-avicenne">
                     {{ (declarationConsultee?.total_remuneration || 0).toFixed(2) }} €
                   </td>

@@ -1,21 +1,25 @@
 <template>
-  <div class="p-4 p-md-5">
-    <div class="container">
+  <div class="p-6">
+    <div class="container-fluid p-0">
       
-      <div class="section-header mb-5">
-        <h1 class="mb-2">Mon Tableau de Bord</h1>
-        <div class="d-flex align-items-center flex-wrap gap-2">
-          <p class="text-muted mb-0">
-            Bienvenue sur l'interface Avicenne Pay, 
-            <strong v-if="userProfile" class="text-dark">{{ userProfile.prenom }} {{ userProfile.nom }}</strong>
-          </p>
-          <span class="badge bg-success-subtle border border-success-subtle">Profil Actif</span>
-          <span class="badge badge-soft">Accès : Aujourd'hui</span>
+      <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 5rem;">
+        <div>
+          <h1 class="h1-avicenne m-0">Mon Tableau de Bord</h1>
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <p class="text-muted small mb-0">
+              Bienvenue sur l'interface Avicenne Pay, 
+              <strong v-if="userProfile" class="text-dark">{{ userProfile.prenom }} {{ userProfile.nom }}</strong>
+            </p>
+            <span class="badge bg-success-subtle border border-success-subtle text-success small">Profil Actif</span>
+          </div>
+        </div>
+        
+        <div class="d-none d-md-block">
+          <span class="badge badge-soft text-muted">Accès : Aujourd'hui</span>
         </div>
       </div>
 
       <div class="row g-4">
-        
         <div v-if="userProfile?.role === 'admin'" class="col-md-4">
           <div class="card card-action shadow-sm h-100" @click="goToUsers">
             <div class="card-body p-4 d-flex flex-column justify-content-between">
@@ -72,18 +76,15 @@
                     <i class="bi bi-arrow-right"></i>
                   </button>
                 </div>
-
                 <div v-else class="text-end">
-                  <span @click="goToCcda" class="text-primary fw-bold small hover-primary">
+                  <span @click="goToCcda" class="text-primary fw-bold small hover-primary cursor-pointer">
                     Y aller <i class="bi bi-arrow-right ms-1"></i>
                   </span>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
-
       </div> 
     </div> 
   </div> 

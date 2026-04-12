@@ -1,7 +1,10 @@
 <template>
-  <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="text-primary fw-bold">📊 Pilotage & Analyses</h2>
+  <div class="p-6">
+    <div class="mb-8 d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h1-avicenne m-0">📊 Pilotage & Analyses</h1>
+        <p class="text-muted small mb-0">Indicateurs de performance et suivi global de l'activité.</p>
+      </div>
       <span class="badge bg-primary px-3 py-2">Accès Administrateur</span>
     </div>
 

@@ -429,11 +429,11 @@ const basculerStatut = async (user) => {
 </script>
 
 <template>
-  <div class="container mt-4 text-start">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="p-6 text-start">
+    <div class="mb-8 d-flex justify-content-between align-items-center">
       <div>
-        <h1 class="h1-avicenne">Gestion des Utilisateurs</h1>
-        <p class="text-muted">Visualisez et gérez les utilisateurs selon votre périmètre de droits.</p>
+        <h1 class="h1-avicenne m-0">Gestion des Utilisateurs</h1>
+        <p class="text-muted small mb-0">Visualisez et gérez les utilisateurs selon votre périmètre de droits.</p>
       </div>
       
       <button 

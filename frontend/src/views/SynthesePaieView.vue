@@ -1,7 +1,10 @@
 <template>
-  <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="text-primary fw-bold">🧾 Synthèse de Paie</h2>
+  <div class="p-6">
+    <div class="mb-8 d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h1-avicenne m-0">🧾 Synthèse de Paie</h1>
+        <p class="text-muted small mb-0">Consultez les montants globaux et exportez les données de paie.</p>
+      </div>
       <div>
         <button class="btn btn-outline-success fw-bold me-2" @click="exporterPaie">
           📥 Export Résumé (CSV)
