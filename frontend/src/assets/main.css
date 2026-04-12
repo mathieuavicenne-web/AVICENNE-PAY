@@ -430,3 +430,41 @@ tfoot td {
     width: 50px;
     height: 50px;
 }
+/* ==========================================================================
+   LOADER PREMIUM AVICENNE (GLOBAL)
+   ========================================================================== */
+
+.avicenne-heart-logo {
+  position: relative;
+  font-size: 3.5rem;
+  color: var(--primary-color);
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 80px; 
+  height: 80px;
+}
+
+.avicenne-heart-logo .bi-activity {
+  position: absolute;
+  font-size: 1.6rem;
+  color: white;
+  margin-top: 2px; /* Centrage optique */
+}
+
+/* Animation de pulsation unique pour toute l'app */
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.1); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.animate-pulse-heart {
+  animation: heartPulse 1.4s infinite ease-in-out;
+}
+
+.text-avicenne {
+  color: var(--primary-color);
+}

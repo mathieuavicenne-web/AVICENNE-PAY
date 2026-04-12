@@ -2,51 +2,57 @@
   <div class="p-6">
     <div class="mb-8 d-flex justify-content-between align-items-center">
       <div>
-        <h1 class="h1-avicenne m-0">🧾 Synthèse de Paie</h1>
+        <h1 class="h1-avicenne m-0">Synthèse de Paie</h1>
         <p class="text-muted small mb-0">Consultez les montants globaux et exportez les données de paie.</p>
       </div>
-      <div>
-        <button class="btn btn-outline-success fw-bold me-2" @click="exporterPaie">
-          📥 Export Résumé (CSV)
-        </button>
-        <button class="btn btn-success fw-bold" @click="exporterJournalDetails">
-          📊 Export Journal Détaillé (Excel)
+      
+      <div class="d-flex gap-2">
+        <button 
+          class="btn btn-avicenne-success px-4 shadow-sm d-flex align-items-center" 
+          @click="exporterJournalDetails"
+          :disabled="loading" 
+        >
+          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+          <i v-else class="bi bi-file-earmark-excel me-2"></i>
+          
+          <span>{{ loading ? 'Génération...' : 'Exporter Journal Détaillé' }}</span>
         </button>
       </div>
     </div>
 
-    <div class="card shadow-sm mb-4 border-0 bg-light">
-      <div class="card-body">
+    <div class="card shadow-avicenne border-0 rounded-4 mb-4 overflow-hidden">
+      <div class="card-body p-4 bg-white">
         <div class="row g-3 align-items-end">
-          <div class="col-md-2">
-            <label class="form-label fw-bold small text-muted">Du (Mois)</label>
-            <select v-model="filtres.moisDebut" class="form-select">
-              <option v-for="m in 12" :key="m" :value="m">{{ donnerNomMois(m) }}</option>
-            </select>
-          </div>
-          <div class="col-md-1">
-            <label class="form-label fw-bold small text-muted">Du (Année)</label>
-            <select v-model="filtres.anneeDebut" class="form-select">
-              <option v-for="a in listeAnnees" :key="a" :value="a">{{ a }}</option>
-            </select>
+          <div class="col-md-5">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label fw-bold small text-avicenne">DU (MOIS / ANNÉE)</label>
+                <div class="input-group input-group-sm">
+                  <select v-model="filtres.moisDebut" class="form-select border-2">
+                    <option v-for="m in 12" :key="m" :value="m">{{ donnerNomMois(m) }}</option>
+                  </select>
+                  <select v-model="filtres.anneeDebut" class="form-select border-2">
+                    <option v-for="a in listeAnnees" :key="a" :value="a">{{ a }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-bold small text-avicenne">AU (MOIS / ANNÉE)</label>
+                <div class="input-group input-group-sm">
+                  <select v-model="filtres.moisFin" class="form-select border-2">
+                    <option v-for="m in 12" :key="m" :value="m">{{ donnerNomMois(m) }}</option>
+                  </select>
+                  <select v-model="filtres.anneeFin" class="form-select border-2">
+                    <option v-for="a in listeAnnees" :key="a" :value="a">{{ a }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="col-md-2">
-            <label class="form-label fw-bold small text-muted">Au (Mois)</label>
-            <select v-model="filtres.moisFin" class="form-select">
-              <option v-for="m in 12" :key="m" :value="m">{{ donnerNomMois(m) }}</option>
-            </select>
-          </div>
-          <div class="col-md-1">
-            <label class="form-label fw-bold small text-muted">Au (Année)</label>
-            <select v-model="filtres.anneeFin" class="form-select">
-              <option v-for="a in listeAnnees" :key="a" :value="a">{{ a }}</option>
-            </select>
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label fw-bold small text-muted">Statut</label>
-            <select v-model="filtreStatut" class="form-select">
+          <div class="col-md-3">
+            <label class="form-label fw-bold small text-avicenne">FILTRER PAR STATUT</label>
+            <select v-model="filtreStatut" class="form-select form-select-sm border-2">
               <option value="tous">Tous les statuts</option>
               <option value="brouillon">Brouillon</option>
               <option value="soumise">Soumise</option>
@@ -54,90 +60,172 @@
             </select>
           </div>
 
-          <div class="col-md-4">
-            <button class="btn btn-primary w-100 fw-bold" @click="chargerSynthese">
-              🔍 Rechercher
+          <div class="col-md-4 d-flex align-items-end justify-content-end">
+            <button 
+              class="btn btn-avicenne-primary px-5 fw-bold shadow-sm d-flex align-items-center justify-content-center" 
+              @click="chargerSynthese"
+              :disabled="loading"
+            >
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i v-else class="bi bi-search me-2"></i>
+              
+              <span>{{ loading ? 'Actualisation...' : 'Actualiser la synthèse' }}</span>
             </button>
           </div>
         </div>
       </div>
     </div>
-    <div v-if="donneesPaie.length > 0" class="d-flex gap-3 mb-3 justify-content-end">
-      <div class="badge bg-light text-dark border p-2 fs-6">
-        📁 Total : <strong>{{ donneesPaie.length }}</strong>
-      </div>
-      <div class="badge bg-secondary p-2 fs-6">
-        ✏️ Brouillons : <strong>{{ compteursStatuts.brouillon }}</strong>
-      </div>
-      <div class="badge bg-warning text-dark p-2 fs-6">
-        ⏳ Soumises : <strong>{{ compteursStatuts.soumise }}</strong>
-      </div>
-      <div class="badge bg-success p-2 fs-6">
-        ✅ Validées : <strong>{{ compteursStatuts.validee }}</strong>
-      </div>
-    </div>
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0 align-middle">
-            <thead class="table-light">
-              <tr>
-                <th class="ps-3">NOM</th>
-                <th>PRÉNOM</th>
-                <th class="text-center">SITE</th>
-                <th class="text-center">RÔLE</th>
-                <th class="text-center">MOIS/ANNÉE DÉCLARATION</th>
-                <th class="text-center">STATUT DÉCLARATION</th>
-                <th class="text-end pe-3">MONTANT BRUT GLOBAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading">
-                <td colspan="7" class="text-center py-4 text-muted">
-                  Chargement des données comptables...
-                </td>
-              </tr>
-              
-              <tr v-else-if="donneesPaie.length === 0">
-                <td colspan="7" class="text-center py-4 text-muted">
-                  Aucune déclaration trouvée pour cette période.
-                </td>
-              </tr>
-
-              <tr v-for="(ligne, index) in donneesFiltrees" :key="index">
-                <td class="ps-3 fw-bold">{{ ligne.nom }}</td>
-                <td>{{ ligne.prenom }}</td>
-                <td class="text-center">
-                  <span class="badge bg-secondary">{{ ligne.site }}</span>
-                </td>
-                <td class="text-center">
-                  <span class="badge bg-light text-dark border">{{ ligne.role.toUpperCase() }}</span>
-                </td>
-                <td class="text-center fw-bold text-muted">{{ ligne.periode }}</td>
-                <td class="text-center">
-                  <span :class="['badge', getStatutColorClass(ligne.statut)]">
-                    {{ ligne.statut.toUpperCase() }}
-                  </span>
-                </td>
-                <td class="text-end pe-3 fw-bold text-success">
-                  {{ ligne.montant_brut.toFixed(2) }} €
-                </td>
-              </tr>
-            </tbody>
-            
-            <tfoot v-if="donneesPaie.length > 0 && !loading" class="table-light fw-bold">
-              <tr>
-                <td colspan="5" class="ps-3">Total Général ({{ donneesPaie.length }} déclarations affichées)</td>
-                <td></td>
-                <td class="text-end pe-3 text-primary fs-5">{{ calculMontantTotal.toFixed(2) }} €</td>
-              </tr>
-            </tfoot>
-          </table>
+    <div class="card shadow-avicenne border-0 rounded-4 overflow-hidden">
+      <div v-if="loading" class="text-center my-5 py-5">
+        <div class="d-flex flex-column align-items-center">
+          <div class="avicenne-heart-logo animate-pulse-heart mb-3">
+            <i class="bi bi-suit-heart-fill"></i>
+            <i class="bi bi-activity"></i>
+          </div>
+          <div class="mt-2">
+            <span class="text-avicenne fw-bold">Récupération des données comptables...</span>
+            <div class="progress mt-2 mx-auto" style="width: 150px; height: 4px; border-radius: 10px; background-color: rgba(67, 150, 209, 0.1);">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                  role="progressbar" 
+                  style="width: 100%; background-color: var(--primary-color);">
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div v-else class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead style="background-color: #f8fafc; border-bottom: 2px solid var(--avicenne-blue);">
+            <tr class="small text-uppercase">
+              <th class="px-4 py-3 text-avicenne">Nom</th>
+              <th class="px-4 py-3 text-avicenne">Prénom</th>
+              <th class="px-4 py-3 text-avicenne text-center">Site</th>
+              <th class="px-4 py-3 text-avicenne text-center">Rôle</th>
+              <th class="px-4 py-3 text-avicenne text-center">Période</th>
+              <th class="px-4 py-3 text-avicenne text-center">Statut</th>
+              <th class="px-4 py-3 text-avicenne text-end">Montant Brut</th>
+            </tr>
+          </thead>
+          
+          <tbody class="text-avicenne-dark">
+            <tr v-if="donneesFiltrees.length === 0">
+              <td colspan="7" class="text-center py-5 text-muted italic">
+                <i class="bi bi-search me-2"></i> Aucune déclaration trouvée pour cette période.
+              </td>
+            </tr>
+
+            <tr v-for="(ligne, index) in donneesFiltrees" :key="index">
+              <td class="px-4 fw-bold">{{ ligne.nom }}</td>
+              <td class="px-4">{{ ligne.prenom }}</td>
+              <td class="px-4 text-center">
+                <span class="badge bg-light text-dark border">{{ ligne.site }}</span>
+              </td>
+              <td class="px-4 text-center">
+                <span :class="['badge-role', `badge-role-${ligne.role?.toLowerCase()}`]">
+                  {{ ligne.role.toUpperCase() }}
+                </span>
+              </td>
+              <td class="px-4 text-center fw-bold text-muted small">{{ ligne.periode }}</td>
+              <td class="px-4 text-center">
+                <span class="badge-statut" :class="ligne.statut.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
+                  {{ ligne.statut.toUpperCase() }}
+                </span>
+              </td>
+              <td class="px-4 text-end fw-bold" style="color: var(--avicenne-blue)">
+                {{ ligne.montant_brut.toFixed(2) }} €
+              </td>
+            </tr>
+          </tbody>
+          
+          <tfoot v-if="donneesFiltrees.length > 0" class="border-top-2">
+            <tr style="background-color: #f8fafc;">
+              <td colspan="5" class="px-4 py-3 text-end fw-bold text-avicenne">TOTAL GÉNÉRAL :</td>
+              <td></td>
+              <td class="px-4 py-3 text-end fw-bold fs-5 text-avicenne">
+                {{ calculMontantTotal.toFixed(2) }} €
+              </td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   </div>
 </template>
+<style scoped>
+/* --- BOUTON VERT EXPORT (Excel) --- */
+.btn-avicenne-success {
+    background-color: #2D6A4F !important; 
+    color: white !important;
+    border: 1px solid #2D6A4F !important;
+    border-radius: 0.75rem; /* Harmonisation avec main.css */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-avicenne-success:hover:not(:disabled) {
+    background-color: #1B4332 !important;
+    border-color: #1B4332 !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(27, 67, 50, 0.3) !important;
+}
+
+.btn-avicenne-success:active {
+    transform: translateY(1px);
+}
+
+.btn-avicenne-success:disabled {
+    background-color: #2D6A4F !important;
+    opacity: 0.6 !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* --- BOUTON BLEU ACTUALISER (Filtres) --- */
+.btn-avicenne-primary {
+    /* Utilisation de la variable correcte de main.css */
+    background-color: var(--primary-color) !important; 
+    color: white !important;
+    border: 1px solid var(--primary-color) !important;
+    border-radius: 0.75rem; /* Harmonisation avec main.css */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-avicenne-primary:hover:not(:disabled) {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(67, 150, 209, 0.3) !important;
+}
+
+.btn-avicenne-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-avicenne-primary:disabled {
+    background-color: var(--primary-color) !important;
+    opacity: 0.6 !important;
+    border-color: transparent !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+/* --- STYLE DES BADGES STATUT (Exemple) --- */
+.badge-statut {
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.badge-statut.valide { background-color: #d1fae5; color: #065f46; }
+.badge-statut.enattente { background-color: #fef3c7; color: #92400e; }
+</style>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
@@ -181,22 +269,6 @@ const donneesFiltrees = computed(() => {
     
     return statutNormalise === filtreNormalise
   })
-})
-
-//  Calcul automatique des compteurs par statut
-const compteursStatuts = computed(() => {
-  const totaux = { brouillon: 0, soumise: 0, validee: 0 }
-  
-  donneesPaie.value.forEach(ligne => {
-    // On enlève les accents pour être sûr que ça matche
-    const statutNormalise = ligne.statut.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    
-    if (statutNormalise === 'brouillon') totaux.brouillon++
-    if (statutNormalise === 'soumise') totaux.soumise++
-    if (statutNormalise === 'validee' || statutNormalise === 'validée') totaux.validee++
-  })
-  
-  return totaux
 })
 
 const calculMontantTotal = computed(() => {
@@ -253,44 +325,8 @@ const chargerSynthese = async () => {
   }
 }
 
-// Export CSV du tableau résumé
-const exporterPaie = () => {
-  if (donneesPaie.value.length === 0) {
-    alert("Aucune donnée à exporter pour cette période.")
-    return
-  }
-
-  const entetes = ["NOM", "PRENOM", "SITE", "ROLE", "MOIS/ANNEE", "STATUT", "MONTANT BRUT GLOBAL (€)"]
-  
-  const lignes = donneesPaie.value.map(ligne => [
-    `"${ligne.nom}"`,
-    `"${ligne.prenom}"`, 
-    `"${ligne.site}"`,
-    `"${ligne.role}"`,
-    `"${ligne.periode}"`,
-    `"${ligne.statut}"`,
-    ligne.montant_brut.toFixed(2)
-  ])
-
-  const contenuCSV = [entetes.join(";"), ...lignes.map(l => l.join(";"))].join("\n")
-
-  const blob = new Blob(["\ufeff", contenuCSV], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  
-  const lien = document.createElement("a")
-  lien.href = url
-  
-  const nomMoisDebut = donnerNomMois(filtres.value.moisDebut)
-  const nomMoisFin = donnerNomMois(filtres.value.moisFin)
-  lien.setAttribute("download", `Synthese_Paie_Du_${nomMoisDebut}_${filtres.value.anneeDebut}_Au_${nomMoisFin}_${filtres.value.anneeFin}.csv`)
-  
-  document.body.appendChild(lien)
-  lien.click()
-  document.body.removeChild(lien)
-}
-
-// Export Excel lourd pour la compta (concerne TOUJOURS uniquement le validé)
 const exporterJournalDetails = async () => {
+  loading.value = true
   try {
     if (!window.ExcelJS) {
       await new Promise((resolve, reject) => {
@@ -303,8 +339,6 @@ const exporterJournalDetails = async () => {
     }
     
     const ExcelJS = window.ExcelJS
-
-    // 🎯 4. ON MODIFIE AUSSI L'EXPORT : Pour exporter la plage sélectionnée
     const response = await api.get('/paie/synthese-mensuelle/details', {
       params: {
         mois_debut: filtres.value.moisDebut,
@@ -315,15 +349,59 @@ const exporterJournalDetails = async () => {
     })
 
     const donneesDetails = response.data
-
     if (donneesDetails.length === 0) {
-      alert("Aucune donnée détaillée à exporter pour cette période (seules les déclarations validées sont exportées).")
+      alert("Aucune donnée détaillée à exporter.")
       return
     }
 
     const workbook = new ExcelJS.Workbook()
-    const worksheet = workbook.addWorksheet('Détails Paie')
 
+    // 1. ONGLET RÉSUMÉ (Regroupé par Nom+Prénom pour éviter les doublons NSS de test)
+    const sheetResume = workbook.addWorksheet('Résumé par Utilisateur')
+    sheetResume.columns = [
+      { header: 'Type Contrat', key: 'type_contrat', width: 15 },
+      { header: 'NOM', key: 'nom', width: 20 },
+      { header: 'PRÉNOM', key: 'prenom', width: 20 },
+      { header: 'Num. Sécu (NSS)', key: 'nss', width: 20 },
+      { header: 'IBAN', key: 'iban', width: 28 },
+      { header: 'Site', key: 'site', width: 15 },
+      { header: 'Rôle', key: 'role', width: 15 },
+      { header: 'TOTAL BRUT', key: 'montant_brut', width: 18 }
+    ]
+
+    sheetResume.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D6A4F' } }
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+
+    const resumeMap = {}
+    donneesDetails.forEach(item => {
+      const userKey = `${item.nom.trim()}_${item.prenom.trim()}`.toLowerCase()
+      if (!resumeMap[userKey]) {
+        resumeMap[userKey] = { ...item, montant_brut: 0 }
+      }
+      resumeMap[userKey].montant_brut += parseFloat(item.montant_brut || 0)
+    })
+
+    Object.values(resumeMap).forEach((user, index) => {
+      const row = sheetResume.addRow({ ...user, nom: user.nom.toUpperCase() })
+      row.getCell(8).numFmt = '#,##0.00" €"'
+      if (index % 2 !== 0) {
+        row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } })
+      }
+    })
+
+    const totalRowRes = sheetResume.rowCount + 1
+    sheetResume.mergeCells(`A${totalRowRes}:G${totalRowRes}`)
+    sheetResume.getCell(`A${totalRowRes}`).value = "TOTAL GÉNÉRAL DES VIREMENTS"
+    sheetResume.getCell(`A${totalRowRes}`).alignment = { horizontal: 'right' }
+    sheetResume.getCell(`H${totalRowRes}`).value = { formula: `SUM(H2:H${totalRowRes - 1})` }
+    sheetResume.getCell(`H${totalRowRes}`).numFmt = '#,##0.00" €"'
+    sheetResume.getCell(`H${totalRowRes}`).font = { bold: true }
+
+    // 2. ONGLET DÉTAILLÉ
+    const worksheet = workbook.addWorksheet('Détails Paie')
     worksheet.columns = [
       { header: 'Type Contrat', key: 'type_contrat', width: 15 },
       { header: 'NOM', key: 'nom', width: 20 },
@@ -340,104 +418,39 @@ const exporterJournalDetails = async () => {
       { header: 'Montant brut', key: 'montant_brut', width: 15 }
     ]
 
-    const headerRow = worksheet.getRow(1)
-    headerRow.height = 25
-    headerRow.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF0D6EFD' }
-      }
-      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 }
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4396D1' } }
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true }
       cell.alignment = { vertical: 'middle', horizontal: 'center' }
     })
 
     donneesDetails.forEach((item, index) => {
-      const row = worksheet.addRow({
-        type_contrat: item.type_contrat,
-        nom: item.nom.toUpperCase(),
-        prenom: item.prenom,
-        nss: item.nss,
-        iban: item.iban,
-        site: item.site,
-        role: item.role,
-        programme: item.programme,
-        matiere: item.matiere,
-        mission: item.mission,
-        quantite: item.quantite,
-        tarif_unitaire: item.tarif_unitaire,
-        montant_brut: item.montant_brut
-      })
-
-      row.height = 20
-
-      const centeredCols = [1, 4, 5, 6, 7, 8, 11]
-      centeredCols.forEach(colIndex => {
-        row.getCell(colIndex).alignment = { vertical: 'middle', horizontal: 'center' }
-      })
-      
-      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' }
-      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' }
-      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'left' }
-      row.getCell(10).alignment = { vertical: 'middle', horizontal: 'left' }
-
+      const row = worksheet.addRow({ ...item, nom: item.nom.toUpperCase() })
       row.getCell(12).numFmt = '#,##0.00" €"'
       row.getCell(13).numFmt = '#,##0.00" €"'
-
       if (index % 2 !== 0) {
-        row.eachCell((cell) => {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFF8F9FA' }
-          }
-        })
+        row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } })
       }
     })
 
-    const totalRowIndex = donneesDetails.length + 2
-    const totalRow = worksheet.getRow(totalRowIndex)
-    totalRow.height = 25
-    
-    worksheet.mergeCells(`A${totalRowIndex}:L${totalRowIndex}`)
-    const totalLabelCell = totalRow.getCell(1)
-    totalLabelCell.value = "TOTAL BRUT GÉNÉRAL"
-    totalLabelCell.font = { bold: true, size: 11 }
-    totalLabelCell.alignment = { vertical: 'middle', horizontal: 'right' }
-    
-    const totalSumCell = totalRow.getCell(13)
-    totalSumCell.value = { formula: `SUM(M2:M${totalRowIndex - 1})` }
-    totalSumCell.numFmt = '#,##0.00" €"'
-    totalSumCell.font = { bold: true, size: 11, color: { argb: 'FFDC3545' } }
-    totalSumCell.alignment = { vertical: 'middle', horizontal: 'right' }
-
-    totalRow.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE9ECEF' }
-      }
-    })
+    const totalRowDet = worksheet.rowCount + 1
+    worksheet.mergeCells(`A${totalRowDet}:L${totalRowDet}`)
+    worksheet.getCell(`A${totalRowDet}`).value = "TOTAL BRUT GÉNÉRAL"
+    worksheet.getCell(`A${totalRowDet}`).alignment = { horizontal: 'right' }
+    worksheet.getCell(`M${totalRowDet}`).value = { formula: `SUM(M2:M${totalRowDet - 1})` }
+    worksheet.getCell(`M${totalRowDet}`).numFmt = '#,##0.00" €"'
+    worksheet.getCell(`M${totalRowDet}`).font = { bold: true, color: { argb: 'FFDC3545' } }
 
     const buffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    
     const link = document.createElement('a')
-    link.href = url
-    
-    const nomMoisDebut = donnerNomMois(filtres.value.moisDebut)
-    const nomMoisFin = donnerNomMois(filtres.value.moisFin)
-    link.setAttribute('download', `Details_Paie_Du_${nomMoisDebut}_Au_${nomMoisFin}.xlsx`)
-    
-    document.body.appendChild(link)
+    link.href = URL.createObjectURL(blob)
+    link.download = `Synthese_Paie_Detaillée_${donnerNomMois(filtres.value.moisFin)}.xlsx`
     link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
   } catch (error) {
-    console.error("Erreur lors de l'export Excel :", error)
-    alert("Impossible de générer le fichier Excel.")
+    console.error("Erreur export :", error)
+  } finally {
+    loading.value = false
   }
 }
 

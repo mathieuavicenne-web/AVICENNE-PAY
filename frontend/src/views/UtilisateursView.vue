@@ -9,8 +9,8 @@ const errorMessage = ref('')
 const idUserConnecte = ref(null)
 const roleUserConnecte = ref('')
 const siteUserConnecte = ref('') 
-const programmeUserConnecte = ref('') // 📍 Stocke le programme du user connecté
-const matiereUserConnectee = ref('')  // 📍 Stocke la matière du user connecté
+const programmeUserConnecte = ref('')
+const matiereUserConnectee = ref('')
 const peutGererUtilisateurs = ref(false)
 
 // --- État pour la recherche ---
@@ -136,7 +136,8 @@ const utilisateursTries = computed(() => {
     resultat = resultat.filter(user => {
       return (
         (user.nom?.toLowerCase().includes(terme)) ||
-        (user.prenom?.toLowerCase().includes(terme)) ||
+        (user.prenom?.toLowerCase().includes(terme)) || 
+        (user.filiere?.toLowerCase().includes(terme)) ||
         (user.email?.toLowerCase().includes(terme)) ||
         (user.role?.toLowerCase().includes(terme)) ||
         (user.site?.toLowerCase().includes(terme))
@@ -265,8 +266,8 @@ const chargerDonnees = async () => {
     idUserConnecte.value = me.id
     roleUserConnecte.value = me.role
     siteUserConnecte.value = me.site || '' 
-    programmeUserConnecte.value = me.programme || '' // 📍 On mémorise le programme du resp
-    matiereUserConnectee.value = me.matiere || ''   // 📍 On mémorise la matière du resp
+    programmeUserConnecte.value = me.programme || ''
+    matiereUserConnectee.value = me.matiere || ''
     
     peutGererUtilisateurs.value = ['admin', 'coordo', 'top_com', 'resp'].includes(roleUserConnecte.value)
 
@@ -396,6 +397,24 @@ const soumettreFormulaire = async () => {
     isSubmitting.value = false
   }
 }
+const getEmojiFiliere = (filiere) => {
+  if (!filiere) return '👤'; // Fallback si null
+  
+  // On transforme "medecine" ou "Médecine" en "medecine" pour comparer
+  const val = filiere.toLowerCase()
+                     .trim()
+                     .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Enlève les accents
+
+  const emojis = {
+    'medecine': '🩺',
+    'pharmacie': '💊',
+    'odontologie': '🦷',
+    'maieutique': '🤰',
+    'kinesitherapie': '💆'
+  };
+  
+  return emojis[val] || '👤';
+};
 
 const getRoleBadgeClass = (role) => {
   const mapping = {
@@ -585,10 +604,11 @@ const basculerStatut = async (user) => {
 
           <button 
             v-if="roleUserConnecte === 'admin'" 
-            class="btn btn-outline-primary-custom btn-sm fw-bold px-3 shadow-sm" 
+            class="btn btn-avicenne-success px-4 shadow-sm d-flex align-items-center" 
             @click="exporterUtilisateurs"
           >
-            <i class="bi bi-file-earmark-excel me-2"></i> Export Base (Excel)
+            <i class="bi bi-file-earmark-excel me-2"></i>
+            <span>Exporter Base (Excel)</span>
           </button>
 
         </div>
@@ -633,6 +653,7 @@ const basculerStatut = async (user) => {
           <table class="table table-hover mb-0 align-middle">
             <thead class="bg-light">
               <tr>
+                <th class="ps-4" style="width: 50px;"></th>
                 <th class="ps-4 th-triable" @click="changerTri('nom')">
                   NOM <i class="bi ms-1" :class="colonneTriee === 'nom' ? (ordreTri === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-hash'"></i>
                 </th>
@@ -668,6 +689,15 @@ const basculerStatut = async (user) => {
               </tr>
               
               <tr v-for="user in utilisateursTries" :key="user.id">
+                <td class="ps-4 text-center">
+                  <span v-if="user.filiere" 
+                        class="fs-5" 
+                        :title="user.filiere" 
+                        style="cursor: help; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+                    {{ getEmojiFiliere(user.filiere) }}
+                  </span>
+                  <span v-else class="text-muted opacity-25 small">—</span>
+                </td>
                 <td class="ps-4 fw-bold text-avicenne-dark text-uppercase">{{ user.nom }}</td>
                 <td>{{ user.prenom }}</td>
                 <td>
@@ -728,13 +758,75 @@ const basculerStatut = async (user) => {
 </template>
 
 <style scoped>
-/* On utilise les variables du main.css */
+/* --- BARRE DE RECHERCHE AFFINÉE --- */
+.custom-group.shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; /* Ombre très légère */
+    border: 1px solid #e2e8f0 !important; /* Bordure fine grise */
+    border-radius: 10px;
+    background: white;
+    transition: all 0.2s ease;
+    max-width: 500px; /* Évite que la barre ne soit trop géante sur grand écran */
+}
+
+.custom-group.shadow-sm:focus-within {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 4px 12px rgba(67, 150, 209, 0.1) !important;
+}
+
+.custom-group .input-group-text {
+    background-color: transparent !important;
+    border: none !important;
+    color: #a0aec0;
+    padding-left: 1.25rem;
+}
+
+.custom-group .form-control {
+    border: none !important;
+    padding: 0.6rem 1rem; /* Hauteur plus élégante */
+    font-size: 0.9rem;
+}
+
+.custom-group .form-control:focus {
+    box-shadow: none !important;
+}
+
+/* --- TABLEAU & EMOJIS --- */
+.filiere-table-emoji {
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+    display: inline-block;
+    transition: transform 0.2s ease;
+    cursor: help;
+}
+
+tr:hover .filiere-table-emoji {
+    transform: scale(1.2);
+}
+
+.table td .fs-5 {
+    display: inline-block;
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+.table tr:hover td .fs-5 {
+    transform: scale(1.3);
+}
+
+.table tbody tr td {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--primary-subtle);
+}
+
+/* --- EN-TÊTES & TRI --- */
 .th-triable { 
     cursor: pointer; 
     transition: all 0.2s ease;
     font-size: 0.75rem;
     color: var(--text-muted);
     letter-spacing: 0.05em;
+    vertical-align: middle;
 }
 
 .th-triable:hover { 
@@ -742,23 +834,24 @@ const basculerStatut = async (user) => {
     color: var(--primary-color);
 }
 
-.tri-icon { 
-    display: inline-block; 
-    width: 15px; 
-    font-size: 0.7rem; 
-    margin-left: 5px; 
-    color: var(--primary-color);
+/* --- BOUTONS --- */
+.btn-table {
+    min-width: 100px;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
 }
 
-/* Style spécifique pour la barre de recherche dans cette vue */
-.input-group.custom-group .form-control {
-    border-left: 1px solid var(--color-border);
-    padding-left: 1rem;
+.btn-avicenne-success {
+    background-color: #2D6A4F; 
+    color: white;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.table tbody tr td {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--primary-subtle);
+.btn-avicenne-success:hover {
+    background-color: #1B4332;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 </style>

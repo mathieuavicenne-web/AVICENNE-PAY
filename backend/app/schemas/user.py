@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     email: EmailStr
     nom: str
     prenom: str
+    filiere: Optional[str] = None
     telephone: Optional[str] = None
     adresse: Optional[str] = None
     code_postal: Optional[str] = None
@@ -56,6 +57,7 @@ class UserProfileUpdate(BaseModel):
     """
     nom: Optional[str] = None
     prenom: Optional[str] = None
+    filiere: Optional[str] = None
     telephone: Optional[str] = None
     adresse: Optional[str] = None
     code_postal: Optional[str] = None

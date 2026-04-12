@@ -385,9 +385,22 @@ onMounted(async () => {
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary mb-3"></div>
-      <p class="text-muted">Chargement en cours...</p>
+    <div v-if="loading" class="text-center my-5 py-5">
+      <div class="d-flex flex-column align-items-center">
+        <div class="avicenne-heart-logo animate-pulse-heart mb-3">
+          <i class="bi bi-suit-heart-fill"></i>
+          <i class="bi bi-activity"></i>
+        </div>
+        <div class="mt-2">
+          <span class="text-avicenne fw-bold">Récupération des déclarations...</span>
+          <div class="progress mt-2 mx-auto" style="width: 150px; height: 4px; border-radius: 10px; background-color: rgba(67, 150, 209, 0.1);">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                 role="progressbar" 
+                 style="width: 100%; background-color: var(--primary-color);">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-else>
@@ -659,3 +672,6 @@ onMounted(async () => {
 
   </div>
 </template>
+<style scoped>
+
+</style>

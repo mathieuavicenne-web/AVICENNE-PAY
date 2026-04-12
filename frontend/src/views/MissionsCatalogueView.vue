@@ -17,9 +17,22 @@
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-10 card shadow-sm border-0">
-      <div class="spinner-border text-primary animate-pulse-heart" role="status"></div>
-      <p class="mt-3 text-muted italic">Synchronisation du catalogue en cours...</p>
+    <div v-if="loading" class="text-center my-5 py-5">
+      <div class="d-flex flex-column align-items-center">
+        <div class="avicenne-heart-logo animate-pulse-heart mb-3">
+          <i class="bi bi-suit-heart-fill"></i>
+          <i class="bi bi-activity"></i>
+        </div>
+        <div class="mt-2">
+          <span class="text-avicenne fw-bold">Chargement du catalogue de missions...</span>
+          <div class="progress mt-2 mx-auto" style="width: 150px; height: 4px; border-radius: 10px; background-color: rgba(67, 150, 209, 0.1);">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                role="progressbar" 
+                style="width: 100%; background-color: var(--primary-color);">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-else-if="missions.length === 0" class="card p-10 text-center shadow-avicenne border-0">
@@ -169,6 +182,10 @@
 .form-check-input:checked {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+}
+
+.text-avicenne {
+  color: var(--primary-color);
 }
 </style>
 

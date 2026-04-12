@@ -82,11 +82,11 @@ const peutVoirPilotageEtPaie = computed(() => userRole.value === 'admin')
           
           <div class="d-flex align-items-center gap-3">
             <RouterLink to="/dashboard" class="navbar-brand d-flex align-items-center me-0">
-              <div class="avicenne-heart-logo scale-navbar-logo">
-                <i class="bi bi-suit-heart-fill"></i>
-                <i class="bi bi-activity"></i>
+              <div class="avicenne-heart-logo nav-logo-container animate-pulse-heart">
+                <i class="bi bi-suit-heart-fill text-white"></i>
+                <i class="bi bi-activity nav-activity-blue"></i>
               </div>
-              <span class="fw-bold text-white fs-5 tracking-tight">Avicenne Pay</span>
+              <span class="fw-bold text-white fs-5 tracking-tight ms-2">Avicenne Pay</span>
             </RouterLink>
 
             <div v-if="estConnecte" class="d-flex flex-column d-none d-md-flex">
@@ -272,5 +272,37 @@ main.container-fluid {
 /* On s'assure que la navbar reste au-dessus de tout le reste du contenu */
 .navbar.sticky-top {
   z-index: 1020;
+}
+/* --- STYLE LOGO NAVBAR (Inversé) --- */
+.nav-logo-container {
+  transform: scale(0.7); /* Ajustement taille pour navbar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-logo-container .bi-suit-heart-fill {
+  font-size: 2.5rem; /* Taille du coeur */
+}
+
+.nav-activity-blue {
+  position: absolute;
+  /* L'activité électrique prend la couleur de fond de la navbar */
+  color: var(--primary-color) !important; 
+  font-size: 1.3rem;
+  z-index: 2;
+}
+
+/* On ré-applique l'animation ici au cas où elle n'est pas globale */
+@keyframes heartPulse {
+  0% { transform: scale(0.7); }
+  15% { transform: scale(0.78); }
+  30% { transform: scale(0.7); }
+  45% { transform: scale(0.8); }
+  100% { transform: scale(0.7); }
+}
+
+.animate-pulse-heart {
+  animation: heartPulse 1.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 </style>
