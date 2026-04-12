@@ -65,25 +65,22 @@ const declarationsFiltreesEtTriees = computed(() => {
   // 1. FILTRAGE PAR STATUT (Boutons toggles)
   resultat = resultat.filter(dec => statutsSelectionnes.value.includes(dec.statut))
 
-  // 2. FILTRAGE PAR RECHERCHE TEXTUELLE
+  // 2. FILTRAGE PAR RECHERCHE TEXTUELLE (Scan intégral)
   if (recherche.value.trim() !== '') {
     const terme = recherche.value.toLowerCase().trim()
     resultat = resultat.filter(dec => {
-      const auteur = `${dec.user?.prenom || ''} ${dec.user?.nom || ''}`.toLowerCase()
-      const site = (dec.user?.site || '').toLowerCase()
-      const role = (dec.user?.role || '').toLowerCase()
-      const programme = (dec.user?.programme || '').toLowerCase()
-      const matiere = (dec.user?.matiere || '').toLowerCase()
-      const statut = (dec.statut || '').toLowerCase()
-
-      return (
-        auteur.includes(terme) ||
-        site.includes(terme) ||
-        role.includes(terme) ||
-        programme.includes(terme) ||
-        matiere.includes(terme) ||
-        statut.includes(terme)
-      )
+      return [
+        (dec.user?.nom || ''),
+        (dec.user?.prenom || ''),
+        (dec.user?.site || ''),
+        (dec.user?.role || ''),
+        (dec.user?.programme || ''),
+        (dec.user?.matiere || ''),
+        (dec.statut || ''),
+        nomMois(dec.mois),
+        String(dec.annee),
+        String(dec.total_remuneration || '')
+      ].some(champ => champ.toLowerCase().includes(terme))
     })
   }
 
@@ -91,9 +88,13 @@ const declarationsFiltreesEtTriees = computed(() => {
   return resultat.sort((a, b) => {
     let valeurA, valeurB
     switch (colonneTriee.value) {
-      case 'auteur':
-        valeurA = `${a.user?.nom || ''} ${a.user?.prenom || ''}`.toLowerCase()
-        valeurB = `${b.user?.nom || ''} ${b.user?.prenom || ''}`.toLowerCase()
+      case 'nom':
+        valeurA = (a.user?.nom || '').toLowerCase()
+        valeurB = (b.user?.nom || '').toLowerCase()
+        break
+      case 'prenom':
+        valeurA = (a.user?.prenom || '').toLowerCase()
+        valeurB = (b.user?.prenom || '').toLowerCase()
         break
       case 'site':
         valeurA = (a.user?.site || '').toLowerCase()
@@ -490,9 +491,9 @@ onMounted(async () => {
           <table class="table table-hover align-middle mb-0">
             <thead style="background-color: #f8fafc; border-bottom: 2px solid var(--avicenne-blue);">
               <tr class="small text-uppercase">
-                <th v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" @click="changerTri('auteur')" class="px-4 py-3 cursor-pointer text-avicenne">Auteur ↑↓</th>
-                <th @click="changerTri('site')" class="px-4 py-3 cursor-pointer text-avicenne">Site</th>
-                <th @click="changerTri('role')" class="px-4 py-3 cursor-pointer text-avicenne">Rôle</th>
+                <th v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" @click="changerTri('nom')" class="px-4 py-3 cursor-pointer text-avicenne">Nom ↑↓</th>
+                <th v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" @click="changerTri('prenom')" class="px-4 py-3 cursor-pointer text-avicenne">Prénom ↑↓</th>
+                <th @click="changerTri('site')" class="px-4 py-3 cursor-pointer text-avicenne">Site</th> <th @click="changerTri('role')" class="px-4 py-3 cursor-pointer text-avicenne">Rôle</th>
                 <th @click="changerTri('programme')" class="px-4 py-3 cursor-pointer text-avicenne">Programme</th>
                 <th @click="changerTri('matiere')" class="px-4 py-3 cursor-pointer text-avicenne">Matière</th>
                 <th @click="changerTri('total_brut')" class="px-4 py-3 cursor-pointer text-avicenne fw-bold">Total Brut</th>
@@ -504,26 +505,40 @@ onMounted(async () => {
             <tbody class="text-avicenne-dark">
               <tr v-for="dec in declarationsFiltreesEtTriees" :key="dec.id">
                 <td v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" class="px-4 fw-bold">
-                  {{ dec.user?.prenom }} {{ dec.user?.nom }}
+                  {{ dec.user?.nom }}
                 </td>
-                <td class="px-4">{{ dec.user?.site || 'N/A' }}</td>
+
+                <td v-if="['admin', 'coordo', 'resp', 'top_com'].includes(userRole)" class="px-4">
+                  {{ dec.user?.prenom }}
+                </td>
+
                 <td class="px-4">
-                  <span class="badge-role" 
-                      :class="{
-                          'badge-role-admin': dec.user?.role === 'admin',
-                          'badge-role-coordo': dec.user?.role === 'coordo',
-                          'badge-role-resp': dec.user?.role === 'resp'
-                      }">
-                    {{ dec.user?.role }}
-                </span>
+                  {{ dec.user?.site || 'N/A' }}
                 </td>
+
+                <td class="px-4">
+                  <span :class="['badge-role', `badge-role-${dec.user?.role?.toLowerCase()}`]">
+                    {{ dec.user?.role }}
+                  </span>
+                </td>
+
                 <td class="px-4 small">{{ dec.user?.programme || 'N/A' }}</td>
                 <td class="px-4 small">{{ dec.user?.matiere || 'N/A' }}</td>
-                <td class="px-4 fw-bold">{{ dec.total_remuneration.toFixed(2) }} €</td>
-                <td class="px-4 text-center">
-                  <span class="badge-statut" :class="dec.statut">{{ dec.statut.toUpperCase() }}</span>
+
+                <td class="px-4 fw-bold">
+                  {{ (dec.total_remuneration || 0).toFixed(2) }} €
                 </td>
-                <td class="px-4 fw-bold text-capitalize">{{ nomMois(dec.mois) }} {{ dec.annee }}</td>
+
+                <td class="px-4 text-center">
+                  <span class="badge-statut" :class="dec.statut">
+                    {{ dec.statut.toUpperCase() }}
+                  </span>
+                </td>
+
+                <td class="px-4 fw-bold text-capitalize">
+                  {{ nomMois(dec.mois) }} {{ dec.annee }}
+                </td>
+
                 <td class="px-4 text-end">
                   <div class="d-flex justify-content-end gap-2">
                     

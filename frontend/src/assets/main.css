@@ -112,11 +112,13 @@ h1, .h1-avicenne {
     padding-left: 1.25rem;
 }
 
-.custom-group .form-control {
+.custom-group .form-control, 
+.custom-group .form-select { 
     border: 1px solid var(--color-border);
     border-left: none;
     font-size: 0.95rem;
     padding: 0.75rem 1rem;
+    background-color: white; /* Pour être sûr que le select soit propre */
 }
 
 .custom-group:focus-within {
@@ -209,34 +211,33 @@ h1, .h1-avicenne {
 📋 COMPOSANT : DÉCLARATIONS & TABLEAUX
 ================================================================ */
 
-/* Badges de Statut (Style Hospitalier Doux) */
+/* Badges de Statut (Déclarations & Activation Compte) */
 .badge-statut {
     padding: 4px 12px;
     border-radius: 50px;
     font-size: 0.75rem;
     font-weight: 700;
-    display: inline-block;
 }
-.badge-statut.brouillon { background-color: #fef3c7; color: #92400e; }
-.badge-statut.soumise   { background-color: #e0f2fe; color: #075985; }
-.badge-statut.validee   { background-color: #dcfce7; color: #166534; }
+/* On lie les états : Brouillon/Inactif = Jaune, Soumise = Bleu, Validée/Actif = Vert */
+.badge-statut.brouillon, .badge-statut.inactif { background-color: #fef3c7; color: #92400e; }
+.badge-statut.soumise { background-color: #e0f2fe; color: #075985; }
+.badge-statut.validee, .badge-statut.actif { background-color: #dcfce7; color: #166534; }
 
-/* Badges de Rôle (Style Médical Pastel) */
+/* Badges de Rôle (Profils Utilisateurs) */
 .badge-role {
     padding: 4px 10px;
     border-radius: 6px;
     font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
-    background-color: #f1f5f9;
-    color: #475569;
     border: 1px solid var(--color-border);
 }
-
-/* Couleurs spécifiques aux rôles */
-.badge-role-admin  { background-color: #ede9fe !important; color: #5b21b6 !important; }
-.badge-role-coordo { background-color: #ffedd5 !important; color: #9a3412 !important; }
+.badge-role-admin  { background-color: #fef2f2 !important; color: #991b1b !important; }
+.badge-role-coordo { background-color: #ede9fe !important; color: #5b21b6 !important; }
 .badge-role-resp   { background-color: #fae8ff !important; color: #86198f !important; }
+.badge-role-tcp    { background-color: #dcfce7 !important; color: #15803d !important; }
+.badge-role-com    { background-color: #f1f5f9 !important; color: #475569 !important; }
+.badge-role-topcom, .badge-role-top_com { background-color: #e0f2fe !important; color: #0369a1 !important; }
 
 /* ================================================================
 🪟 MODALES & INTERACTIONS
@@ -351,7 +352,7 @@ tfoot td {
     border: none !important;
 }
 
-/* --- ÉTATS ACTIFS (Couleurs synchronisées avec tes badges) --- */
+/* --- ÉTATS ACTIFS (Couleurs synchronisées les badges) --- */
 
 /* Brouillon : Jaune Avicenne */
 .btn-group .btn-secondary { 
@@ -384,4 +385,26 @@ tfoot td {
     background-color: #f1f5f9 !important;
     color: var(--text-dark) !important;
     opacity: 1;
+}
+/* ================================================================
+📑 TABLEAU : STYLES COMPLÉMENTAIRES
+================================================================ */
+.th-triable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--color-border) !important;
+}
+
+.th-triable:hover {
+    background-color: var(--primary-subtle);
+    color: var(--primary-color);
+}
+
+.x-small {
+    font-size: 0.75rem !important;
+    line-height: 1.2;
 }

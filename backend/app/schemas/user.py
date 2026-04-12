@@ -94,14 +94,12 @@ class UserOut(UserBase):
     matiere: Optional[str] = None
     profil_complete: bool
     type_contrat: Optional[TypeContrat] = None 
-    
-    # 🔒 On les laisse à None ici pour rassurer le Front,
-    # mais on ne les alimentera JAMAIS sur cette route pour la sécurité !
+    # 🔒 Ces champs sont alimentés uniquement si l'utilisateur est Admin
+    # Sinon, ils restent à None par sécurité.
     nss: Optional[str] = None
     iban: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 # ── 6. SÉCURITÉ MOTS DE PASSE ──────────────────────────────────────────────
 class PasswordChange(BaseModel):

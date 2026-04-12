@@ -202,47 +202,42 @@ def get_users(
 ):
     query = db.query(User)
     
-    # 🛡️ RÈGLE 1 : L'Admin voit ABSOLUMENT TOUT le monde
+    # --- Tes filtres de périmètre (Inchangés) ---
     if current_user.role == Role.admin:
         pass 
-        
-    # 🛡️ RÈGLE 2 : Le COORDO voit les RESP et TCP de son SITE + lui-même
     elif current_user.role == Role.coordo:
-        query = query.filter(
-            User.site == current_user.site,
-            or_(
-                User.role.in_([Role.resp, Role.tcp]),
-                User.id == current_user.id
-            )
-        )
-        
-    # 🛡️ RÈGLE 3 : Le RESP voit uniquement les TCP de son triplet (Site/Prog/Mat) + lui-même
+        query = query.filter(User.site == current_user.site, or_(User.role.in_([Role.resp, Role.tcp]), User.id == current_user.id))
     elif current_user.role == Role.resp:
-        query = query.filter(
-            User.site == current_user.site,
-            User.programme == current_user.programme,
-            User.matiere == current_user.matiere,
-            or_(
-                User.role == Role.tcp,
-                User.id == current_user.id
-            )
-        )
-        
-    # 🛡️ RÈGLE 4 : Le TOP COM voit les COM de son SITE + lui-même
+        query = query.filter(User.site == current_user.site, User.programme == current_user.programme, User.matiere == current_user.matiere, or_(User.role == Role.tcp, User.id == current_user.id))
     elif current_user.role == Role.top_com:
-        query = query.filter(
-            User.site == current_user.site,
-            or_(
-                User.role == Role.com,
-                User.id == current_user.id
-            )
-        )
-        
-    # 🛡️ RÈGLE 5 : Les exécutants (TCP, COM) ne voient qu'eux-mêmes
+        query = query.filter(User.site == current_user.site, or_(User.role == Role.com, User.id == current_user.id))
     else:
         query = query.filter(User.id == current_user.id)
         
-    return query.all()
+    users = query.all()
+
+    # 🔓 LA RÉPARATION SÉCURISÉE
+    # On itère sur les objets SQL et on injecte les données décryptées
+    for u in users:
+        # Initialisation par défaut (Sécurité)
+        u.iban = None
+        u.nss = None
+        
+        # Seul l'admin a le droit de peupler ces champs
+        if current_user.role == Role.admin:
+            if u.iban_encrypted:
+                try:
+                    u.iban = decrypt_data(u.iban_encrypted)
+                except:
+                    u.iban = "Erreur"
+            
+            if u.nss_encrypted:
+                try:
+                    u.nss = decrypt_data(u.nss_encrypted)
+                except:
+                    u.nss = "Erreur"
+
+    return users
 
 @router.patch("/{user_id}/toggle", response_model=dict)
 def toggle_user_status(
